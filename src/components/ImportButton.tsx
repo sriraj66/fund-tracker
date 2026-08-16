@@ -1,0 +1,183 @@
+"use client";
+
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { Upload, X, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface ImportButtonProps {
+  endpoint: string;        // e.g. "/api/import/mf"
+  accept: string;          // e.g. ".xlsx" or ".pdf"
+  label?: string;
+  hint?: string;
+}
+
+type State =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "success"; message: string; imported: number }
+  | { status: "error"; message: string };
+
+export default function ImportButton({ endpoint, accept, label = "Import Statement", hint }: ImportButtonProps) {
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [state, setState] = useState<State>({ status: "idle" });
+  const [open, setOpen] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const handleFile = (file: File) => {
+    setSelectedFile(file);
+    setState({ status: "idle" });
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+    setState({ status: "loading" });
+
+    const fd = new FormData();
+    fd.append("file", selectedFile);
+
+    try {
+      const res = await fetch(endpoint, { method: "POST", body: fd });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setState({ status: "error", message: data.error ?? "Unknown error" });
+      } else {
+        setState({ status: "success", message: data.message, imported: data.imported });
+        router.refresh();
+        setTimeout(() => {
+          setOpen(false);
+          setSelectedFile(null);
+          setState({ status: "idle" });
+        }, 2500);
+      }
+    } catch {
+      setState({ status: "error", message: "Network error. Please try again." });
+    }
+  };
+
+  return (
+    <>
+      <button onClick={() => setOpen(true)} className="btn-secondary">
+        <Upload className="w-4 h-4" />
+        {label}
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setOpen(false); setSelectedFile(null); setState({ status: "idle" }); }} />
+          <div className="relative glass-card w-full max-w-md p-6 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-base font-semibold text-white">{label}</h2>
+                {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
+              </div>
+              <button
+                onClick={() => { setOpen(false); setSelectedFile(null); setState({ status: "idle" }); }}
+                className="text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => inputRef.current?.click()}
+              className={cn(
+                "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
+                dragOver
+                  ? "border-sky-400 bg-sky-500/10"
+                  : selectedFile
+                  ? "border-emerald-500/50 bg-emerald-500/5"
+                  : "border-gray-700 hover:border-gray-500 hover:bg-gray-800/30"
+              )}
+            >
+              <input
+                ref={inputRef}
+                type="file"
+                accept={accept}
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFile(f);
+                }}
+              />
+              {selectedFile ? (
+                <div>
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-2">
+                    <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <p className="text-sm text-emerald-400 font-medium">{selectedFile.name}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(selectedFile.size / 1024).toFixed(1)} KB — click to change
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center mx-auto mb-3">
+                    <Upload className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <p className="text-sm text-gray-300 font-medium">
+                    Drop file here or click to browse
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Accepts: <span className="text-sky-400">{accept}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Status */}
+            {state.status === "success" && (
+              <div className="mt-4 flex items-start gap-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3">
+                <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-emerald-400 font-medium">Import successful!</p>
+                  <p className="text-xs text-emerald-300/70 mt-0.5">{state.message}</p>
+                </div>
+              </div>
+            )}
+
+            {state.status === "error" && (
+              <div className="mt-4 flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-400">{state.message}</p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setOpen(false); setSelectedFile(null); setState({ status: "idle" }); }}
+                className="btn-secondary flex-1 justify-center"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpload}
+                disabled={!selectedFile || state.status === "loading" || state.status === "success"}
+                className="btn-primary flex-1 justify-center"
+              >
+                {state.status === "loading" && <Loader2 className="w-4 h-4 animate-spin" />}
+                {state.status === "loading" ? "Importing…" : "Import"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

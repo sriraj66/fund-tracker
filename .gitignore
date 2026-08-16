@@ -1,0 +1,7 @@
+.next
+data
+node_modules
+*.env
+*.local
+.env.local
+.env.development.local
