@@ -1,66 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { verifyIdToken, getAdminFirestore } from "@/lib/firebase/admin";
 
-type RouteParams = {
-  params: Promise<{ type: string }>;
+type RouteParams = { params: Promise<{ type: string }> };
+
+const typeToCollection: Record<string, string> = {
+  mf: "mf_transactions",
+  stocks: "stock_transactions",
+  "us-stocks": "us_stock_transactions",
+  crypto: "crypto_transactions",
+  gold: "gold_transactions",
+  snapshots: "portfolio_snapshots",
 };
 
 export async function DELETE(request: NextRequest, props: RouteParams) {
   try {
-    const supabase = await createClient();
+    const user = await verifyIdToken(request.headers.get("authorization"));
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { type } = await props.params;
+    const col = typeToCollection[type];
+    if (!col) return NextResponse.json({ error: "Invalid data type" }, { status: 400 });
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const params = await props.params;
-    const { type } = params;
-
-    // Map type to table name
-    const tableMap: Record<string, string> = {
-      mf: "mf_transactions",
-      stocks: "stock_transactions",
-      "us-stocks": "us_stock_transactions",
-      crypto: "crypto_transactions",
-      gold: "gold_transactions",
-      snapshots: "portfolio_snapshots",
-    };
-
-    const tableName = tableMap[type];
-
-    if (!tableName) {
-      return NextResponse.json(
-        { error: "Invalid data type" },
-        { status: 400 }
-      );
-    }
-
-    // Delete all records for this user in the specified table
-    const { error, count } = await supabase
-      .from(tableName)
-      .delete({ count: "exact" })
-      .eq("user_id", user.id);
-
-    if (error) {
-      console.error(`Error clearing ${type}:`, error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const db = getAdminFirestore();
+    const snap = await db.collection("users").doc(user.uid).collection(col).get();
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
 
     return NextResponse.json({
       success: true,
-      message: `Successfully deleted ${count ?? 0} records from ${type}`,
-      count: count ?? 0,
+      message: `Successfully deleted ${snap.size} records from ${type}`,
+      count: snap.size,
     });
   } catch (error) {
     console.error("Clear data error:", error);
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to clear data",
-      },
+      { error: error instanceof Error ? error.message : "Failed to clear data" },
       { status: 500 }
     );
   }

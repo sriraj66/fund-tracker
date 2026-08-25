@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { verifyIdToken, getAdminFirestore } from "@/lib/firebase/admin";
 import * as XLSX from "xlsx";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await verifyIdToken(request.headers.get("authorization"));
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const formData = await request.formData();
@@ -17,7 +16,6 @@ export async function POST(request: NextRequest) {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
-    // Find header row: look for "Stock name"
     let headerIdx = -1;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i] as unknown[];
@@ -26,10 +24,7 @@ export async function POST(request: NextRequest) {
         break;
       }
     }
-
-    if (headerIdx === -1) {
-      return NextResponse.json({ error: "Could not find header row with 'Stock name'" }, { status: 422 });
-    }
+    if (headerIdx === -1) return NextResponse.json({ error: "Could not find header row with 'Stock name'" }, { status: 422 });
 
     const headers = (rows[headerIdx] as unknown[]).map((h) => (h ? h.toString().trim().toLowerCase() : ""));
     const nameIdx = headers.findIndex((h) => h.includes("stock name"));
@@ -56,51 +51,41 @@ export async function POST(request: NextRequest) {
       const qtyRaw = row[qtyIdx]?.toString().replace(/,/g, "").trim();
       const dateRaw = row[dateIdx]?.toString().trim();
 
-      if (!stockName || !symbol || !txType || !valueRaw || !qtyRaw) {
-        skipped.push(i + 1);
-        continue;
-      }
+      if (!stockName || !symbol || !txType || !valueRaw || !qtyRaw) { skipped.push(i + 1); continue; }
 
       const value = parseFloat(valueRaw);
       const qty = parseFloat(qtyRaw);
       if (isNaN(value) || isNaN(qty)) { skipped.push(i + 1); continue; }
 
-      // Parse datetime like "01-07-2026 11:55 AM"
       let execDate: string | null = null;
       if (dateRaw) {
-        // Try standard parse first
-        const d = new Date(dateRaw);
-        if (!isNaN(d.getTime())) {
-          execDate = d.toISOString();
+        // Try DD-MM-YYYY HH:MM AM/PM FIRST — new Date("01-07-2026...") incorrectly parses as Jan 7, not Jul 1
+        const ddmmMatch = dateRaw.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        if (ddmmMatch) {
+          const [, dd, mm, yyyy, hh, min, ampm] = ddmmMatch;
+          let hour = parseInt(hh);
+          if (ampm?.toUpperCase() === "PM" && hour < 12) hour += 12;
+          if (ampm?.toUpperCase() === "AM" && hour === 12) hour = 0;
+          execDate = new Date(`${yyyy}-${mm}-${dd}T${String(hour).padStart(2, "0")}:${min}:00+05:30`).toISOString();
         } else {
-          // Try "DD-MM-YYYY HH:MM AM/PM" format
-          const match = dateRaw.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-          if (match) {
-            const [, dd, mm, yyyy, hh, min, ampm] = match;
-            let hour = parseInt(hh);
-            if (ampm?.toUpperCase() === "PM" && hour < 12) hour += 12;
-            if (ampm?.toUpperCase() === "AM" && hour === 12) hour = 0;
-            execDate = new Date(`${yyyy}-${mm}-${dd}T${String(hour).padStart(2, "0")}:${min}:00+05:30`).toISOString();
-          }
+          // Fallback: ISO or unambiguous formats
+          const d = new Date(dateRaw);
+          if (!isNaN(d.getTime())) execDate = d.toISOString();
         }
       }
 
-      const isin = isinIdx >= 0 ? row[isinIdx]?.toString().trim() || null : null;
-      const exchange = exchangeIdx >= 0 ? row[exchangeIdx]?.toString().trim() || null : null;
-      const status = statusIdx >= 0 ? row[statusIdx]?.toString().trim() || "Executed" : "Executed";
-
       records.push({
-        user_id: user.id,
         stock_name: stockName,
         symbol,
-        isin,
+        isin: isinIdx >= 0 ? row[isinIdx]?.toString().trim() || null : null,
         transaction_type: txType === "SELL" ? "SELL" : "BUY",
         quantity: qty,
         price: qty > 0 ? value / qty : null,
         value,
-        exchange,
+        exchange: exchangeIdx >= 0 ? row[exchangeIdx]?.toString().trim() || null : null,
         execution_date: execDate,
-        order_status: status,
+        order_status: statusIdx >= 0 ? row[statusIdx]?.toString().trim() || "Executed" : "Executed",
+        created_at: new Date().toISOString(),
       });
     }
 
@@ -108,11 +93,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No valid stock orders found in file", skipped }, { status: 422 });
     }
 
-    const { error: dbError } = await supabase
-      .from("stock_transactions")
-      .insert(records);
-
-    if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
+    const db = getAdminFirestore();
+    const batch = db.batch();
+    const col = db.collection("users").doc(user.uid).collection("stock_transactions");
+    records.forEach((rec) => batch.set(col.doc(), rec));
+    await batch.commit();
 
     return NextResponse.json({
       success: true,

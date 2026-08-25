@@ -1,15 +1,22 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+"use client";
 
-export default async function RootPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
-  if (user) {
-    redirect("/dashboard");
-  } else {
-    redirect("/auth/login");
-  }
+export default function RootPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/auth/login");
+      }
+    }
+  }, [user, loading, router]);
+
+  return null;
 }

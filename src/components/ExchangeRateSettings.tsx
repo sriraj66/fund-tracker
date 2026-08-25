@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Loader2, Settings } from "lucide-react";
+import { auth } from "@/lib/firebase/config";
 
 interface ExchangeRateSettingsProps {
   currentRate: number;
@@ -26,9 +27,10 @@ export default function ExchangeRateSettings({ currentRate }: ExchangeRateSettin
     setError("");
 
     try {
+      const token = await auth.currentUser?.getIdToken();
       const res = await fetch("/api/settings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ usd_to_inr_rate: numRate }),
       });
 
@@ -40,7 +42,7 @@ export default function ExchangeRateSettings({ currentRate }: ExchangeRateSettin
         router.refresh();
         setOpen(false);
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Please try again.");
     } finally {
       setIsUpdating(false);

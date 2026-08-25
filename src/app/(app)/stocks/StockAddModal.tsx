@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/config";
+import { useAuth } from "@/context/AuthContext";
 import { Plus, X, Loader2 } from "lucide-react";
 
 interface Props {
-  userId: string;
+  onAdded?: () => void;
 }
 
-export default function StockAddModal({ userId }: Props) {
-  const router = useRouter();
-  const supabase = createClient();
+export default function StockAddModal({ onAdded }: Props) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,45 +36,33 @@ export default function StockAddModal({ userId }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     setError("");
     setLoading(true);
-
     const qty = parseFloat(form.quantity);
     const val = parseFloat(form.value);
-
-    const { error } = await supabase.from("stock_transactions").insert({
-      user_id: userId,
-      stock_name: form.stock_name.trim().toUpperCase(),
-      symbol: form.symbol.trim().toUpperCase(),
-      isin: form.isin.trim() || null,
-      transaction_type: form.transaction_type,
-      quantity: qty,
-      price: qty > 0 ? val / qty : null,
-      value: val,
-      exchange: form.exchange || null,
-      execution_date: form.execution_date || null,
-      order_status: "Executed",
-      notes: form.notes || null,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setOpen(false);
-      setForm({
-        stock_name: "",
-        symbol: "",
-        isin: "",
-        transaction_type: "BUY",
-        quantity: "",
-        value: "",
-        exchange: "NSE",
-        execution_date: new Date().toISOString().slice(0, 16),
-        notes: "",
+    try {
+      await addDoc(collection(db, "users", user.uid, "stock_transactions"), {
+        stock_name: form.stock_name.trim().toUpperCase(),
+        symbol: form.symbol.trim().toUpperCase(),
+        isin: form.isin.trim() || null,
+        transaction_type: form.transaction_type,
+        quantity: qty,
+        price: qty > 0 ? val / qty : null,
+        value: val,
+        exchange: form.exchange || null,
+        execution_date: form.execution_date || null,
+        order_status: "Executed",
+        notes: form.notes || null,
+        created_at: new Date().toISOString(),
       });
-      router.refresh();
+      setOpen(false);
+      setForm({ stock_name: "", symbol: "", isin: "", transaction_type: "BUY", quantity: "", value: "", exchange: "NSE", execution_date: new Date().toISOString().slice(0, 16), notes: "" });
+      onAdded?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setLoading(false);
     }
   };
 

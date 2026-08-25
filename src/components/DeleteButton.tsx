@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Loader2 } from "lucide-react";
+import { auth } from "@/lib/firebase/config";
 
 interface DeleteButtonProps {
   id: string;
-  endpoint: string; // e.g., "/api/delete/mf"
-  itemName?: string; // e.g., scheme name or symbol
+  endpoint: string;
+  itemName?: string;
 }
 
 export default function DeleteButton({ id, endpoint, itemName }: DeleteButtonProps) {
@@ -18,9 +19,12 @@ export default function DeleteButton({ id, endpoint, itemName }: DeleteButtonPro
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const res = await fetch(`${endpoint}?id=${id}`, { method: "DELETE" });
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch(`${endpoint}?id=${id}`, {
+        method: "DELETE",
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
       const data = await res.json();
-
       if (!res.ok || data.error) {
         alert(`Error: ${data.error ?? "Delete failed"}`);
       } else {

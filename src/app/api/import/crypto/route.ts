@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { verifyIdToken, getAdminFirestore } from "@/lib/firebase/admin";
 import * as XLSX from "xlsx";
 import { extractCoin } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await verifyIdToken(request.headers.get("authorization"));
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const formData = await request.formData();
@@ -15,28 +14,19 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const wb = XLSX.read(buffer, { type: "buffer" });
-
-    // Use "Spot Trades" sheet
     const sheetName = wb.SheetNames.find((n) => n.toLowerCase().includes("spot")) ?? wb.SheetNames[0];
     const ws = wb.Sheets[sheetName];
     const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
-    // Find header row: look for "Transaction Id" and "Market"
     let headerIdx = -1;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i] as unknown[];
       if (
         row.some((cell) => typeof cell === "string" && cell.toString().toLowerCase().includes("transaction id")) &&
         row.some((cell) => typeof cell === "string" && cell.toString().toLowerCase().includes("market"))
-      ) {
-        headerIdx = i;
-        break;
-      }
+      ) { headerIdx = i; break; }
     }
-
-    if (headerIdx === -1) {
-      return NextResponse.json({ error: "Could not find header row. Make sure this is the CoinSwitch transaction XLSX (Spot Trades sheet)." }, { status: 422 });
-    }
+    if (headerIdx === -1) return NextResponse.json({ error: "Could not find header row. Make sure this is the CoinSwitch transaction XLSX." }, { status: 422 });
 
     const headers = (rows[headerIdx] as unknown[]).map((h) => (h ? h.toString().trim().toLowerCase() : ""));
     const txIdIdx = headers.findIndex((h) => h.includes("transaction id"));
@@ -61,70 +51,43 @@ export async function POST(request: NextRequest) {
       const market = row[marketIdx]?.toString().trim().toUpperCase();
       const tradeType = row[tradeTypeIdx]?.toString().trim().toUpperCase();
 
-      if (!dateRaw || !market || !tradeType) {
-        skipped.push(i + 1);
-        continue;
-      }
+      if (!dateRaw || !market || !tradeType) { skipped.push(i + 1); continue; }
 
-      // Parse price: "6,410,689.812699862951 INR" → 6410689.81
-      const parsePriceField = (val: unknown): number | null => {
+      const parseNum = (val: unknown): number | null => {
         if (val === null || val === undefined) return null;
-        const str = val.toString().replace(/,/g, "").replace(/\s*INR\s*/i, "").trim();
-        const n = parseFloat(str);
+        const n = parseFloat(val.toString().replace(/,/g, "").replace(/\s*INR\s*/i, "").trim());
         return isNaN(n) ? null : n;
       };
-
-      // Parse total: "140.33 INR" → 140.33
-      const parseTotalField = (val: unknown): number | null => {
-        if (val === null || val === undefined) return null;
-        const str = val.toString().replace(/,/g, "").replace(/\s*INR\s*/i, "").trim();
-        const n = parseFloat(str);
-        return isNaN(n) ? null : n;
-      };
-
-      const price = parsePriceField(priceIdx >= 0 ? row[priceIdx] : null);
-      const volume = volumeIdx >= 0 && row[volumeIdx] !== null ? parseFloat(row[volumeIdx]!.toString()) : null;
-      const totalInr = parseTotalField(totalIdx >= 0 ? row[totalIdx] : null);
-      const tdsAmount = tdsAmtIdx >= 0 && row[tdsAmtIdx] !== null ? parseFloat(row[tdsAmtIdx]!.toString()) || 0 : 0;
-      const feeAmount = feeAmtIdx >= 0 && row[feeAmtIdx] !== null ? parseFloat(row[feeAmtIdx]!.toString()) || 0 : 0;
 
       const coin = extractCoin(market);
-
-      // Parse date: "2026-07-02 18:38:13"
-      let txDate: string;
       const d = new Date(dateRaw);
-      txDate = !isNaN(d.getTime()) ? d.toISOString() : dateRaw;
+      const txDate = !isNaN(d.getTime()) ? d.toISOString() : dateRaw;
 
       records.push({
-        user_id: user.id,
         transaction_ref: txRef,
         market,
         coin,
         trade_type: tradeType === "SELL" ? "SELL" : "BUY",
-        price,
-        volume,
-        total_inr: totalInr,
-        tds_amount: tdsAmount,
-        fee_amount: feeAmount,
+        price: parseNum(priceIdx >= 0 ? row[priceIdx] : null),
+        volume: volumeIdx >= 0 && row[volumeIdx] !== null ? parseFloat(row[volumeIdx]!.toString()) : null,
+        total_inr: parseNum(totalIdx >= 0 ? row[totalIdx] : null),
+        tds_amount: tdsAmtIdx >= 0 && row[tdsAmtIdx] !== null ? parseFloat(row[tdsAmtIdx]!.toString()) || 0 : 0,
+        fee_amount: feeAmtIdx >= 0 && row[feeAmtIdx] !== null ? parseFloat(row[feeAmtIdx]!.toString()) || 0 : 0,
         transaction_date: txDate,
+        created_at: new Date().toISOString(),
       });
     }
 
-    if (records.length === 0) {
-      return NextResponse.json({ error: "No spot trades found. Make sure this is the CoinSwitch Transaction Statement XLSX.", skipped }, { status: 422 });
-    }
+    if (records.length === 0) return NextResponse.json({ error: "No spot trades found.", skipped }, { status: 422 });
 
-    // Use upsert to avoid duplicates by transaction_ref
-    const { error: dbError } = await supabase
-      .from("crypto_transactions")
-      .insert(records);
-
-    if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
+    const db = getAdminFirestore();
+    const batch = db.batch();
+    const col = db.collection("users").doc(user.uid).collection("crypto_transactions");
+    records.forEach((rec) => batch.set(col.doc(), rec));
+    await batch.commit();
 
     return NextResponse.json({
-      success: true,
-      imported: records.length,
-      skipped: skipped.length,
+      success: true, imported: records.length, skipped: skipped.length,
       message: `Imported ${records.length} crypto trades${skipped.length > 0 ? `, skipped ${skipped.length} rows` : ""}`,
     });
   } catch (err) {

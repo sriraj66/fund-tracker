@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { verifyIdToken, getAdminFirestore } from "@/lib/firebase/admin";
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const XLSX = require("xlsx");
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await verifyIdToken(request.headers.get("authorization"));
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const formData = await request.formData();
@@ -26,89 +25,62 @@ export async function POST(request: NextRequest) {
       if (!row || row.length < 22) continue;
 
       const dateStr = row[0]?.toString().trim();
-      if (!dateStr || dateStr.toLowerCase() === "date" || !dateStr.match(/\d{2}\/\d{2}\/\d{4}/)) {
-        continue;
-      }
+      if (!dateStr || dateStr.toLowerCase() === "date" || !dateStr.match(/\d{2}\/\d{2}\/\d{4}/)) continue;
 
       const [day, month, year] = dateStr.split("/");
       const snapshotDate = `${year}-${month}-${day}`;
 
-      const goldInv = Number(row[2]) || 0;
-      const goldVal = Number(row[3]) || 0;
-      const goldRet = Number(row[4]) || 0;
-      
-      const cryptoInv = Number(row[6]) || 0;
-      const cryptoVal = Number(row[7]) || 0;
-      const cryptoRet = Number(row[8]) || 0;
-      
-      const mfInv = Number(row[10]) || 0;
-      const mfVal = Number(row[11]) || 0;
-      const mfRet = Number(row[12]) || 0;
-      
-      const inStocksInv = Number(row[14]) || 0;
-      const inStocksVal = Number(row[15]) || 0;
-      const inStocksRet = Number(row[16]) || 0;
-      
-      const usStocksInv = Number(row[18]) || 0;
-      const usStocksVal = Number(row[19]) || 0;
-      const usStocksRet = Number(row[20]) || 0;
-      
       const totalInv = Number(row[21]) || 0;
       const totalVal = Number(row[22]) || 0;
-      const totalRet = Number(row[23]) || 0;
-      const profit = Number(row[24]) || 0;
 
       if (totalInv > 0 || totalVal > 0) {
         records.push({
-          user_id: user.id,
           snapshot_date: snapshotDate,
-          gold_invested: goldInv,
-          gold_value: goldVal,
-          gold_return_pct: goldRet,
-          crypto_invested: cryptoInv,
-          crypto_value: cryptoVal,
-          crypto_return_pct: cryptoRet,
-          mf_invested: mfInv,
-          mf_value: mfVal,
-          mf_return_pct: mfRet,
-          in_stocks_invested: inStocksInv,
-          in_stocks_value: inStocksVal,
-          in_stocks_return_pct: inStocksRet,
-          us_stocks_invested: usStocksInv,
-          us_stocks_value: usStocksVal,
-          us_stocks_return_pct: usStocksRet,
+          gold_invested: Number(row[2]) || 0,
+          gold_value: Number(row[3]) || 0,
+          gold_return_pct: Number(row[4]) || 0,
+          crypto_invested: Number(row[6]) || 0,
+          crypto_value: Number(row[7]) || 0,
+          crypto_return_pct: Number(row[8]) || 0,
+          mf_invested: Number(row[10]) || 0,
+          mf_value: Number(row[11]) || 0,
+          mf_return_pct: Number(row[12]) || 0,
+          in_stocks_invested: Number(row[14]) || 0,
+          in_stocks_value: Number(row[15]) || 0,
+          in_stocks_return_pct: Number(row[16]) || 0,
+          us_stocks_invested: Number(row[18]) || 0,
+          us_stocks_value: Number(row[19]) || 0,
+          us_stocks_return_pct: Number(row[20]) || 0,
           total_invested: totalInv,
           total_value: totalVal,
-          total_return_pct: totalRet,
-          profit: profit,
+          total_return_pct: Number(row[23]) || 0,
+          profit: Number(row[24]) || 0,
+          created_at: new Date().toISOString(),
         });
       } else {
         skipped.push(dateStr);
       }
     }
 
-    if (records.length === 0) {
-      return NextResponse.json({
-        error: "No valid snapshot data found.",
-      }, { status: 422 });
+    if (records.length === 0) return NextResponse.json({ error: "No valid snapshot data found." }, { status: 422 });
+
+    const db = getAdminFirestore();
+    const col = db.collection("users").doc(user.uid).collection("portfolio_snapshots");
+
+    // Upsert: delete existing docs for same date, then insert
+    for (const rec of records) {
+      const existing = await col.where("snapshot_date", "==", rec.snapshot_date).get();
+      const batch = db.batch();
+      existing.docs.forEach((d) => batch.delete(d.ref));
+      batch.set(col.doc(), rec);
+      await batch.commit();
     }
 
-    const { error: dbError } = await supabase
-      .from("portfolio_snapshots")
-      .upsert(records, { onConflict: "user_id,snapshot_date" });
-
-    if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
-
     return NextResponse.json({
-      success: true,
-      imported: records.length,
-      skipped: skipped.length,
+      success: true, imported: records.length, skipped: skipped.length,
       message: `Imported ${records.length} portfolio snapshots${skipped.length > 0 ? `, ${skipped.length} skipped` : ""}`,
     });
   } catch (err) {
-    console.error("Portfolio snapshot import error:", err);
-    return NextResponse.json({
-      error: `Import failed: ${err instanceof Error ? err.message : String(err)}`,
-    }, { status: 500 });
+    return NextResponse.json({ error: `Import failed: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 });
   }
 }

@@ -1,8 +1,3 @@
-import { createBrowserClient } from "@supabase/ssr";
-
-export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
+// Supabase has been removed. This file is kept as a stub.
+// Use src/lib/firebase/config.ts instead.
+export {};
