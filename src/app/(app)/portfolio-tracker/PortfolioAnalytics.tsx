@@ -106,12 +106,8 @@ export default function PortfolioAnalytics({ snapshots }: PortfolioAnalyticsProp
       ? ((latest.total_value - latest.total_invested) / latest.total_invested) * 100
       : 0;
 
-    // Best and worst month
-    const returns = snapshots.map(s => s.total_return_pct);
-    const bestMonth = Math.max(...returns);
-    const worstMonth = Math.min(...returns);
-
     // Volatility (standard deviation of returns)
+    const returns = snapshots.map(s => s.total_return_pct);
     const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
     const variance = returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length;
     const volatility = Math.sqrt(variance);
@@ -121,13 +117,17 @@ export default function PortfolioAnalytics({ snapshots }: PortfolioAnalyticsProp
       ? ((latest.total_value - oldest.total_value) / oldest.total_value) * 100
       : 0;
 
+    // Win Rate — months where portfolio is in profit (value > invested)
+    const profitMonths = snapshots.filter(s => s.profit > 0).length;
+    const winRate = snapshots.length > 0 ? (profitMonths / snapshots.length) * 100 : 0;
+
     return {
       xirr,
       absoluteReturn,
-      bestMonth,
-      worstMonth,
       volatility,
       portfolioValueGrowth,
+      winRate,
+      profitMonths,
       totalProfit: latest.profit,
       totalInvested: latest.total_invested,
       currentValue: latest.total_value,
@@ -150,7 +150,7 @@ export default function PortfolioAnalytics({ snapshots }: PortfolioAnalyticsProp
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* XIRR */}
         <div className="p-4 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
@@ -158,7 +158,10 @@ export default function PortfolioAnalytics({ snapshots }: PortfolioAnalyticsProp
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">XIRR</p>
           </div>
           <p className="text-2xl font-bold text-emerald-400">{analytics.xirr.toFixed(2)}%</p>
-          <p className="text-xs text-gray-500 mt-1">Annualized return</p>
+          <p className="text-xs text-gray-500 mt-1">per year, on avg</p>
+          <p className="text-xs text-gray-600 mt-0.5">
+            ₹1L → ₹{(1 * Math.pow(1 + analytics.xirr / 100, 1)).toFixed(2)}L in 1 yr
+          </p>
         </div>
 
         {/* Absolute Return */}
@@ -168,27 +171,10 @@ export default function PortfolioAnalytics({ snapshots }: PortfolioAnalyticsProp
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Absolute Return</p>
           </div>
           <p className="text-2xl font-bold text-sky-400">{analytics.absoluteReturn.toFixed(2)}%</p>
-          <p className="text-xs text-gray-500 mt-1">Current performance</p>
-        </div>
-
-        {/* Best Month */}
-        <div className="p-4 bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-green-400" />
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Best Month</p>
-          </div>
-          <p className="text-2xl font-bold text-green-400">{analytics.bestMonth.toFixed(2)}%</p>
-          <p className="text-xs text-gray-500 mt-1">Peak return</p>
-        </div>
-
-        {/* Worst Month */}
-        <div className="p-4 bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-red-400 rotate-180" />
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Worst Month</p>
-          </div>
-          <p className="text-2xl font-bold text-red-400">{analytics.worstMonth.toFixed(2)}%</p>
-          <p className="text-xs text-gray-500 mt-1">Lowest return</p>
+          <p className="text-xs text-gray-500 mt-1">Total gain on invested</p>
+          <p className="text-xs text-gray-600 mt-0.5">
+            {formatINR(analytics.totalInvested)} → {formatINR(analytics.currentValue)}
+          </p>
         </div>
 
         {/* Volatility */}
@@ -198,7 +184,19 @@ export default function PortfolioAnalytics({ snapshots }: PortfolioAnalyticsProp
             <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Volatility</p>
           </div>
           <p className="text-2xl font-bold text-yellow-400">{analytics.volatility.toFixed(2)}%</p>
-          <p className="text-xs text-gray-500 mt-1">Std deviation</p>
+          <p className="text-xs text-gray-500 mt-1">Return std deviation</p>
+          <p className="text-xs text-gray-600 mt-0.5">Lower = more stable</p>
+        </div>
+
+        {/* Profitable Months */}
+        <div className="p-4 bg-gradient-to-br from-teal-500/10 to-teal-600/5 border border-teal-500/20 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-teal-400" />
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">In Profit</p>
+          </div>
+          <p className="text-2xl font-bold text-teal-400">{analytics.winRate.toFixed(0)}%</p>
+          <p className="text-xs text-gray-500 mt-1">of months value &gt; cost</p>
+          <p className="text-xs text-gray-600 mt-0.5">{analytics.profitMonths} of {analytics.months} snapshots</p>
         </div>
       </div>
 

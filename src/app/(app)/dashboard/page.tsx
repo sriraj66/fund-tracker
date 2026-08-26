@@ -18,6 +18,7 @@ export default function DashboardPage() {
     usData: { amount: number; side: string }[];
     cryptoData: { total_inr: number; trade_type: string }[];
     goldData: { amount: number }[];
+    goldHoldingsData: { invested_amount: number }[];
     recentMf: { id: string; scheme_name: string; amount: number; transaction_date: string; transaction_type: string }[];
     recentStocks: { id: string; stock_name: string; symbol: string; value: number; execution_date: string; transaction_type: string }[];
     recentUs: { id: string; symbol: string; amount: number; transaction_date: string; side: string }[];
@@ -34,13 +35,14 @@ export default function DashboardPage() {
       try {
         const base = (col: string) => collection(db, "users", uid, col);
 
-        const [mfSnap, stockSnap, usSnap, cryptoSnap, goldSnap, settingsSnap,
+        const [mfSnap, stockSnap, usSnap, cryptoSnap, goldSnap, goldHoldingsSnap, settingsSnap,
                recentMfSnap, recentStockSnap, recentUsSnap, recentCryptoSnap, recentGoldSnap] = await Promise.all([
           getDocs(base("mf_transactions")),
           getDocs(base("stock_transactions")),
           getDocs(base("us_stock_transactions")),
           getDocs(base("crypto_transactions")),
           getDocs(base("gold_transactions")),
+          getDocs(base("gold_holdings")),
           getDocs(collection(db, "users", uid, "settings")),
           getDocs(query(base("mf_transactions"), orderBy("transaction_date", "desc"), limit(3))),
           getDocs(query(base("stock_transactions"), orderBy("execution_date", "desc"), limit(3))),
@@ -59,6 +61,7 @@ export default function DashboardPage() {
           usData: usSnap.docs.map((d) => d.data() as { amount: number; side: string }),
           cryptoData: cryptoSnap.docs.map((d) => d.data() as { total_inr: number; trade_type: string }),
           goldData: goldSnap.docs.map((d) => d.data() as { amount: number }),
+          goldHoldingsData: goldHoldingsSnap.docs.map((d) => d.data() as { invested_amount: number }),
           recentMf: recentMfSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string; scheme_name: string; amount: number; transaction_date: string; transaction_type: string })),
           recentStocks: recentStockSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string; stock_name: string; symbol: string; value: number; execution_date: string; transaction_type: string })),
           recentUs: recentUsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string; symbol: string; amount: number; transaction_date: string; side: string })),
@@ -79,7 +82,7 @@ export default function DashboardPage() {
   );
   if (!data) return null;
 
-  const { usdToInr, mfData, stockData, usData, cryptoData, goldData } = data;
+  const { usdToInr, mfData, stockData, usData, cryptoData, goldData, goldHoldingsData } = data;
 
   const mfTotal = mfData.filter((t) => t.transaction_type !== "REDEMPTION").reduce((s, t) => s + Number(t.amount), 0);
   const mfRedemption = mfData.filter((t) => t.transaction_type === "REDEMPTION").reduce((s, t) => s + Number(t.amount), 0);
@@ -90,7 +93,9 @@ export default function DashboardPage() {
   const netUsUSD = usTotal - usSold;
   const netUsINR = netUsUSD * usdToInr;
   const cryptoTotal = cryptoData.filter((t) => t.trade_type === "BUY").reduce((s, t) => s + Number(t.total_inr ?? 0), 0);
-  const goldTotal = goldData.reduce((s, t) => s + Number(t.amount), 0);
+  const goldTxTotal = goldData.reduce((s, t) => s + Number(t.amount), 0);
+  const goldHoldingsTotal = goldHoldingsData.reduce((s, h) => s + Number(h.invested_amount), 0);
+  const goldTotal = goldTxTotal + goldHoldingsTotal;
   const netMf = mfTotal - mfRedemption;
   const netStocks = stockTotal - stockSold;
   const totalINR = netMf + netStocks + netUsINR + cryptoTotal + goldTotal;
@@ -117,7 +122,7 @@ export default function DashboardPage() {
         <StatCard title="Indian Stocks" value={formatINR(netStocks)} subtitle={`${stockData.length} orders`} icon={TrendingUp} iconColor="text-emerald-400" iconBg="bg-emerald-500/10" />
         <StatCard title="US Stocks" value={formatUSD(netUsUSD)} subtitle={`≈ ${formatINR(netUsINR)} • ${usData.length} trades`} icon={Globe} iconColor="text-blue-400" iconBg="bg-blue-500/10" />
         <StatCard title="Crypto" value={formatINR(cryptoTotal)} subtitle={`${cryptoData.length} trades`} icon={Bitcoin} iconColor="text-orange-400" iconBg="bg-orange-500/10" />
-        <StatCard title="Gold" value={formatINR(goldTotal)} subtitle={`${goldData.length} purchases`} icon={Gem} iconColor="text-yellow-400" iconBg="bg-yellow-500/10" />
+        <StatCard title="Gold" value={formatINR(goldTotal)} subtitle={`${goldData.length} purchase${goldData.length !== 1 ? "s" : ""}${goldHoldingsData.length > 0 ? ` + ${goldHoldingsData.length} holding${goldHoldingsData.length !== 1 ? "s" : ""}` : ""}`} icon={Gem} iconColor="text-yellow-400" iconBg="bg-yellow-500/10" />
       </div>
 
       <div className="glass-card p-6">

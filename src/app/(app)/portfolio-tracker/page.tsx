@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
@@ -18,10 +18,39 @@ interface Snapshot {
   gold_invested?: number; crypto_invested?: number; mf_invested?: number; in_stocks_invested?: number; us_stocks_invested?: number;
 }
 
+const SNAPSHOT_PAGE_SIZE = 5;
+
+function PaginationBar({ page, totalPages, total, onPage }: { page: number; totalPages: number; total: number; onPage: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  const from = (page - 1) * SNAPSHOT_PAGE_SIZE + 1;
+  const to = Math.min(page * SNAPSHOT_PAGE_SIZE, total);
+  return (
+    <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800/60">
+      <p className="text-xs text-gray-500">
+        Showing <span className="text-gray-300 font-medium">{from}–{to}</span> of{" "}
+        <span className="text-gray-300 font-medium">{total}</span> snapshots
+      </p>
+      <div className="flex items-center gap-1">
+        <button onClick={() => onPage(1)} disabled={page === 1} className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">«</button>
+        <button onClick={() => onPage(page - 1)} disabled={page === 1} className="px-3 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹ Prev</button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+          <button key={p} onClick={() => onPage(p)}
+            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${page === p ? "bg-sky-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}>
+            {p}
+          </button>
+        ))}
+        <button onClick={() => onPage(page + 1)} disabled={page === totalPages} className="px-3 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Next ›</button>
+        <button onClick={() => onPage(totalPages)} disabled={page === totalPages} className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">»</button>
+      </div>
+    </div>
+  );
+}
+
 export default function PortfolioTrackerPage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [snapshotPage, setSnapshotPage] = useState(1);
 
   const fetchData = async () => {
     if (!user) return;
@@ -29,10 +58,18 @@ export default function PortfolioTrackerPage() {
     try {
       const snap = await getDocs(query(collection(db, "users", user.uid, "portfolio_snapshots"), orderBy("snapshot_date", "asc")));
       setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Snapshot)));
+      setSnapshotPage(1);
     } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, [user]);
+
+  const reversedRows = useMemo(() => rows.slice().reverse(), [rows]);
+  const snapshotTotalPages = Math.max(1, Math.ceil(reversedRows.length / SNAPSHOT_PAGE_SIZE));
+  const paginatedSnapshots = useMemo(() =>
+    reversedRows.slice((snapshotPage - 1) * SNAPSHOT_PAGE_SIZE, snapshotPage * SNAPSHOT_PAGE_SIZE),
+    [reversedRows, snapshotPage]
+  );
 
   const latestSnapshot = rows[rows.length - 1];
   const absoluteReturn = latestSnapshot && latestSnapshot.total_invested > 0 ? ((latestSnapshot.total_value - latestSnapshot.total_invested) / latestSnapshot.total_invested) * 100 : 0;
@@ -88,12 +125,17 @@ export default function PortfolioTrackerPage() {
           </div>
 
           <div className="glass-card overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Snapshot History</h2></div>
+            <div className="px-6 py-4 border-b border-gray-800/60 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-white">Snapshot History</h2>
+                <p className="text-xs text-gray-500 mt-0.5">{rows.length} total snapshots</p>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="data-table">
                 <thead><tr><th>Date</th><th className="text-right">Gold</th><th className="text-right">Crypto</th><th className="text-right">MF</th><th className="text-right">IN Stocks</th><th className="text-right">US Stocks</th><th className="text-right">Total Invested</th><th className="text-right">Total Value</th><th className="text-right">Return %</th><th className="text-right">Profit</th></tr></thead>
                 <tbody>
-                  {rows.slice().reverse().map((s) => (
+                  {paginatedSnapshots.map((s) => (
                     <tr key={s.id}>
                       <td className="font-medium text-white">{formatDate(s.snapshot_date)}</td>
                       <td className="text-right text-yellow-400">{formatINR(s.gold_value ?? 0)}</td>
@@ -110,6 +152,7 @@ export default function PortfolioTrackerPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationBar page={snapshotPage} totalPages={snapshotTotalPages} total={reversedRows.length} onPage={setSnapshotPage} />
           </div>
         </>
       )}
