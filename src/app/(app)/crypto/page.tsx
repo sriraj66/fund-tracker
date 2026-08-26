@@ -8,11 +8,15 @@ import { formatINR, formatDate, formatNumber } from "@/lib/utils";
 import StatCard from "@/components/StatCard";
 import { Bitcoin, TrendingUp, TrendingDown, Plus } from "lucide-react";
 import CryptoAddModal from "./CryptoAddModal";
+import CryptoAddHoldingModal from "./CryptoAddHoldingModal";
 import CryptoMonthlyStats from "./CryptoMonthlyStats";
 import ImportButton from "@/components/ImportButton";
 import DeleteButton from "@/components/DeleteButton";
+import { deleteDoc, doc } from "firebase/firestore";
+import { Trash2, Loader2 } from "lucide-react";
 
 interface CryptoTx { id: string; market: string; coin: string; trade_type: string; price?: number; volume?: number; total_inr?: number; tds_amount?: number; fee_amount?: number; transaction_date: string; }
+interface CryptoHolding { id: string; coin_name: string; invested_amount: number; avg_buy_price: number; quantity: number; record_date: string; }
 
 const TX_PAGE_SIZE = 8;
 
@@ -56,24 +60,43 @@ function PaginationBar({ page, totalPages, total, onPage }: { page: number; tota
 export default function CryptoPage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<CryptoTx[]>([]);
+  const [manualHoldings, setManualHoldings] = useState<CryptoHolding[]>([]);
   const [loading, setLoading] = useState(true);
   const [txPage, setTxPage] = useState(1);
+  const [deletingHolding, setDeletingHolding] = useState<string | null>(null);
 
   const fetchData = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const snap = await getDocs(query(collection(db, "users", user.uid, "crypto_transactions"), orderBy("transaction_date", "desc")));
-      setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CryptoTx)));
+      const [txSnap, holdSnap] = await Promise.all([
+        getDocs(query(collection(db, "users", user.uid, "crypto_transactions"), orderBy("transaction_date", "desc"))),
+        getDocs(query(collection(db, "users", user.uid, "crypto_holdings"), orderBy("record_date", "desc"))),
+      ]);
+      setRows(txSnap.docs.map((d) => ({ id: d.id, ...d.data() } as CryptoTx)));
+      setManualHoldings(holdSnap.docs.map((d) => ({ id: d.id, ...d.data() } as CryptoHolding)));
       setTxPage(1);
     } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchData(); }, [user]);
 
+  const handleDeleteHolding = async (id: string) => {
+    if (!user) return;
+    if (!window.confirm("Delete this holding? This cannot be undone.")) return;
+    setDeletingHolding(id);
+    try {
+      await deleteDoc(doc(db, "users", user.uid, "crypto_holdings", id));
+      setManualHoldings(prev => prev.filter(h => h.id !== id));
+    } catch (err) {
+      alert(`Delete failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally { setDeletingHolding(null); }
+  };
+
   const totalBought = rows.filter((t) => t.trade_type === "BUY").reduce((s, t) => s + Number(t.total_inr ?? 0), 0);
   const totalSold = rows.filter((t) => t.trade_type === "SELL").reduce((s, t) => s + Number(t.total_inr ?? 0), 0);
-  const netInvested = totalBought - totalSold;
+  const holdingsInvested = manualHoldings.reduce((s, h) => s + Number(h.invested_amount), 0);
+  const netInvested = totalBought - totalSold + holdingsInvested;
   const totalTds = rows.reduce((s, t) => s + Number(t.tds_amount ?? 0), 0);
   const totalFees = rows.reduce((s, t) => s + Number(t.fee_amount ?? 0), 0);
 
@@ -99,12 +122,13 @@ export default function CryptoPage() {
         <div className="flex items-center gap-2">
           <ImportButton endpoint="/api/import/crypto" accept=".xlsx,.xls" label="Import Transactions" hint="CoinSwitch Transaction Statement XLSX" />
           <ImportButton endpoint="/api/import/holdings/crypto" accept=".xlsx,.xls" label="Import Holdings" hint="CoinSwitch Trade Report (Balances VDA)" />
+          <CryptoAddHoldingModal onAdded={fetchData} />
           <CryptoAddModal onAdded={fetchData} />
         </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard title="Net Invested" value={formatINR(netInvested)} subtitle="Bought minus sold" icon={Bitcoin} iconColor="text-orange-400" iconBg="bg-orange-500/10" />
+        <StatCard title="Net Invested" value={formatINR(netInvested)} subtitle={`Tx net${holdingsInvested > 0 ? ` + ${manualHoldings.length} holding${manualHoldings.length !== 1 ? "s" : ""}` : ""}`} icon={Bitcoin} iconColor="text-orange-400" iconBg="bg-orange-500/10" />
         <StatCard title="Total Bought" value={formatINR(totalBought)} subtitle={`${rows.filter((t) => t.trade_type === "BUY").length} buys`} icon={TrendingUp} iconColor="text-emerald-400" iconBg="bg-emerald-500/10" />
         <StatCard title="Total Sold" value={formatINR(totalSold)} subtitle={`${rows.filter((t) => t.trade_type === "SELL").length} sells`} icon={TrendingDown} iconColor="text-red-400" iconBg="bg-red-500/10" />
         <StatCard title="TDS Paid" value={formatINR(totalTds)} subtitle={`Fees: ${formatINR(totalFees)}`} icon={Bitcoin} iconColor="text-yellow-400" iconBg="bg-yellow-500/10" />
@@ -112,6 +136,7 @@ export default function CryptoPage() {
 
       {rows.length > 0 && <CryptoMonthlyStats transactions={rows} onDeleted={fetchData} />}
 
+      {/* Computed holdings from transactions */}
       {holdings.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Coin Holdings</h2></div>
@@ -119,6 +144,56 @@ export default function CryptoPage() {
             <table className="data-table">
               <thead><tr><th>Coin</th><th className="text-right">Balance</th><th className="text-right">Net Invested (INR)</th><th className="text-right">Avg Buy Price</th></tr></thead>
               <tbody>{holdings.map((h) => (<tr key={h.coin}><td><span className="font-mono font-semibold text-orange-400">{h.coin}</span></td><td className="text-right text-gray-300">{formatNumber(h.qty, 8)}</td><td className="text-right font-medium text-gray-200">{formatINR(h.invested)}</td><td className="text-right text-gray-300">{h.qty > 0 ? formatINR(h.invested / h.qty) : "—"}</td></tr>))}</tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Imported holdings (manual entries) */}
+      {manualHoldings.length > 0 && (
+        <div className="glass-card overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-800/60 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-white">Imported Holdings</h2>
+              <p className="text-gray-500 text-xs mt-0.5">Manually added coin positions</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Total Invested</p>
+              <p className="text-base font-bold text-orange-400">{formatINR(holdingsInvested)}</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Coin</th>
+                  <th className="text-right">Quantity</th>
+                  <th className="text-right">Avg Buy Price</th>
+                  <th className="text-right">Invested (₹)</th>
+                  <th>Record Date</th>
+                  <th className="text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {manualHoldings.map((h) => (
+                  <tr key={h.id}>
+                    <td><span className="font-mono font-semibold text-orange-400">{h.coin_name}</span></td>
+                    <td className="text-right text-gray-300">{formatNumber(Number(h.quantity), 8)}</td>
+                    <td className="text-right text-gray-300">{formatINR(Number(h.avg_buy_price))}</td>
+                    <td className="text-right font-semibold text-orange-400">{formatINR(Number(h.invested_amount))}</td>
+                    <td className="text-gray-400 text-xs">{formatDate(h.record_date)}</td>
+                    <td className="text-center">
+                      <button
+                        onClick={() => handleDeleteHolding(h.id)}
+                        disabled={deletingHolding === h.id}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                        title="Delete holding">
+                        {deletingHolding === h.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </div>

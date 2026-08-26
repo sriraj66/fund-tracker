@@ -1,12 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import { Plus, X, Loader2 } from "lucide-react";
 
 interface Props { onAdded?: () => void; }
+
+const extractCoin = (market: string) => {
+  const u = market.toUpperCase().trim();
+  // Remove common quote currencies from the end
+  for (const q of ["INR", "USDT", "USDC", "BTC", "ETH", "BNB"]) {
+    if (u.endsWith(q)) return u.slice(0, u.length - q.length);
+  }
+  return u;
+};
 
 export default function CryptoAddModal({ onAdded }: Props) {
   const { user } = useAuth();
@@ -14,25 +23,18 @@ export default function CryptoAddModal({ onAdded }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [form, setForm] = useState({
+  const blank = () => ({
     market: "",
     trade_type: "BUY",
     price: "",
-    volume: "",
     total_inr: "",
-    tds_amount: "0",
-    fee_amount: "0",
     transaction_date: new Date().toISOString().slice(0, 10),
-    notes: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  const [form, setForm] = useState(blank());
 
-  const extractCoin = (market: string) => {
-    const m = market.toUpperCase().replace(/INR$/, "").replace(/USDT$/, "").replace(/BTC$/, "");
-    return m || market.toUpperCase();
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,26 +42,66 @@ export default function CryptoAddModal({ onAdded }: Props) {
     if (!user) return;
     setError(""); setLoading(true);
     try {
+      const price    = parseFloat(form.price)     || 0;
+      const total    = parseFloat(form.total_inr) || 0;
+      const volume   = price > 0 ? total / price : 0;
+      const coin     = extractCoin(form.market);
+      const isBuy    = form.trade_type === "BUY";
+
+      // Check if coin exists in crypto_holdings
+      const holdingsRef = collection(db, "users", user.uid, "crypto_holdings");
+      const holdingSnap = await getDocs(query(holdingsRef, where("coin_name", "==", coin)));
+
+      let holding_id: string | null = null;
+      let applied_qty   = volume;
+      let applied_amount = total;
+
+      if (!holdingSnap.empty) {
+        const holdingDoc = holdingSnap.docs[0];
+        holding_id = holdingDoc.id;
+        const h = holdingDoc.data();
+        const oldQty      = Number(h.quantity      ?? 0);
+        const oldInvested = Number(h.invested_amount ?? 0);
+
+        const newQty      = isBuy ? oldQty + volume      : Math.max(0, oldQty - volume);
+        const newInvested = isBuy ? oldInvested + total  : Math.max(0, oldInvested - total);
+        const newAvgPrice = newQty > 0 ? newInvested / newQty : 0;
+
+        await updateDoc(doc(db, "users", user.uid, "crypto_holdings", holding_id), {
+          quantity:       newQty,
+          invested_amount: newInvested,
+          avg_buy_price:  newAvgPrice,
+        });
+      }
+
       await addDoc(collection(db, "users", user.uid, "crypto_transactions"), {
-        market: form.market.trim().toUpperCase(),
-        coin: extractCoin(form.market.trim()),
-        trade_type: form.trade_type,
-        price: form.price ? parseFloat(form.price) : null,
-        volume: form.volume ? parseFloat(form.volume) : null,
-        total_inr: form.total_inr ? parseFloat(form.total_inr) : null,
-        tds_amount: parseFloat(form.tds_amount) || 0,
-        fee_amount: parseFloat(form.fee_amount) || 0,
+        market:           form.market.trim().toUpperCase(),
+        coin,
+        trade_type:       form.trade_type,
+        price:            price || null,
+        volume:           volume || null,
+        total_inr:        total || null,
+        tds_amount:       0,
+        fee_amount:       0,
         transaction_date: form.transaction_date,
-        notes: form.notes || null,
-        created_at: new Date().toISOString(),
+        // holding link for revert-on-delete
+        holding_id:       holding_id,
+        applied_qty:      applied_qty,
+        applied_amount:   applied_amount,
+        created_at:       new Date().toISOString(),
       });
+
       setOpen(false);
-      setForm({ market: "", trade_type: "BUY", price: "", volume: "", total_inr: "", tds_amount: "0", fee_amount: "0", transaction_date: new Date().toISOString().slice(0, 10), notes: "" });
+      setForm(blank());
       onAdded?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally { setLoading(false); }
   };
+
+  const price = parseFloat(form.price) || 0;
+  const total = parseFloat(form.total_inr) || 0;
+  const autoVolume = price > 0 ? (total / price) : 0;
 
   return (
     <>
@@ -67,33 +109,58 @@ export default function CryptoAddModal({ onAdded }: Props) {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative glass-card w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative glass-card w-full max-w-md p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-white">Add Crypto Trade</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Add Crypto Trade</h2>
+                <p className="text-xs text-gray-500 mt-0.5">If the coin is in your holdings, it will be updated automatically</p>
+              </div>
               <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="form-label">Market * (e.g. BTCINR)</label><input name="market" className="form-input" placeholder="BTCINR" value={form.market} onChange={handleChange} required /></div>
-                <div><label className="form-label">Trade Type *</label><select name="trade_type" className="form-input" value={form.trade_type} onChange={handleChange}><option value="BUY">BUY</option><option value="SELL">SELL</option></select></div>
+                <div>
+                  <label className="form-label">Market * (e.g. BTCINR)</label>
+                  <input name="market" className="form-input font-mono uppercase" placeholder="BTCINR"
+                    value={form.market} onChange={handleChange} required />
+                </div>
+                <div>
+                  <label className="form-label">Trade Type *</label>
+                  <select name="trade_type" className="form-input" value={form.trade_type} onChange={handleChange}>
+                    <option value="BUY">BUY</option>
+                    <option value="SELL">SELL</option>
+                  </select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="form-label">Price (INR)</label><input type="number" name="price" className="form-input" placeholder="6410689.81" step="0.01" value={form.price} onChange={handleChange} /></div>
-                <div><label className="form-label">Volume (coins)</label><input type="number" name="volume" className="form-input" placeholder="0.00002" step="any" value={form.volume} onChange={handleChange} /></div>
+                <div>
+                  <label className="form-label">Price per Coin (₹) *</label>
+                  <input type="number" name="price" className="form-input" placeholder="6410689.81"
+                    step="0.01" min="0" value={form.price} onChange={handleChange} required />
+                </div>
+                <div>
+                  <label className="form-label">Value / Total (₹) *</label>
+                  <input type="number" name="total_inr" className="form-input" placeholder="1000.00"
+                    step="0.01" min="0" value={form.total_inr} onChange={handleChange} required />
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="form-label">Total (INR) *</label><input type="number" name="total_inr" className="form-input" placeholder="140.33" step="0.01" value={form.total_inr} onChange={handleChange} required /></div>
-                <div><label className="form-label">Date *</label><input type="date" name="transaction_date" className="form-input" value={form.transaction_date} onChange={handleChange} required /></div>
+              {autoVolume > 0 && (
+                <p className="text-xs text-gray-500 -mt-2">
+                  ≈ <span className="text-gray-300 font-mono">{autoVolume.toFixed(8)}</span> coins (auto-calculated)
+                </p>
+              )}
+              <div>
+                <label className="form-label">Date *</label>
+                <input type="date" name="transaction_date" className="form-input"
+                  value={form.transaction_date} onChange={handleChange} required />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="form-label">TDS Amount (INR)</label><input type="number" name="tds_amount" className="form-input" placeholder="0" step="0.01" value={form.tds_amount} onChange={handleChange} /></div>
-                <div><label className="form-label">Fee Amount (INR)</label><input type="number" name="fee_amount" className="form-input" placeholder="0" step="0.01" value={form.fee_amount} onChange={handleChange} /></div>
-              </div>
-              <div><label className="form-label">Notes</label><textarea name="notes" className="form-input resize-none" rows={2} value={form.notes} onChange={handleChange} /></div>
               {error && <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2 text-sm text-red-400">{error}</div>}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setOpen(false)} className="btn-secondary flex-1 justify-center">Cancel</button>
-                <button type="submit" disabled={loading} className="btn-primary flex-1 justify-center">{loading && <Loader2 className="w-4 h-4 animate-spin" />}{loading ? "Saving…" : "Save Trade"}</button>
+                <button type="submit" disabled={loading} className="btn-primary flex-1 justify-center">
+                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {loading ? "Saving…" : "Save Trade"}
+                </button>
               </div>
             </form>
           </div>
