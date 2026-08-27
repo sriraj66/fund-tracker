@@ -152,17 +152,17 @@ export default function StocksPage() {
           <>
             <div className="overflow-x-auto">
               <table className="data-table">
-                <thead><tr><th>Stock</th><th>Symbol</th><th>Type</th><th className="text-right">Qty</th><th className="text-right">Value</th><th>Exchange</th><th>Date</th><th className="text-center">Action</th></tr></thead>
+                <thead><tr><th>Stock</th><th className="col-mobile-hidden">Symbol</th><th>Type</th><th className="text-right col-mobile-hidden">Qty</th><th className="text-right">Value</th><th className="col-tablet-hidden">Exchange</th><th className="col-mobile-hidden">Date</th><th className="text-center">Action</th></tr></thead>
                 <tbody>
                   {paginatedOrders.map((t) => (
                     <tr key={t.id}>
-                      <td className="font-medium text-gray-200 max-w-[200px] truncate">{t.stock_name}</td>
-                      <td><span className="font-mono text-xs bg-gray-800 text-sky-400 px-2 py-0.5 rounded">{t.symbol}</span></td>
+                      <td className="font-medium text-gray-200 max-w-[140px] sm:max-w-[200px] truncate">{t.stock_name}</td>
+                      <td className="col-mobile-hidden"><span className="font-mono text-xs bg-gray-800 text-sky-400 px-2 py-0.5 rounded">{t.symbol}</span></td>
                       <td><span className={t.transaction_type === "BUY" ? "badge-buy" : "badge-sell"}>{t.transaction_type}</span></td>
-                      <td className="text-right text-gray-300">{formatNumber(Number(t.quantity), 2)}</td>
+                      <td className="text-right text-gray-300 col-mobile-hidden">{formatNumber(Number(t.quantity), 2)}</td>
                       <td className="text-right font-medium text-gray-200">{formatINR(Number(t.value))}</td>
-                      <td className="text-gray-400 text-xs">{t.exchange ?? "—"}</td>
-                      <td className="text-gray-400 text-xs">{t.execution_date ? formatDate(t.execution_date) : "—"}</td>
+                      <td className="text-gray-400 text-xs col-tablet-hidden">{t.exchange ?? "—"}</td>
+                      <td className="text-gray-400 text-xs col-mobile-hidden">{t.execution_date ? formatDate(t.execution_date) : "—"}</td>
                       <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/stocks" itemName={t.symbol} /></td>
                     </tr>
                   ))}

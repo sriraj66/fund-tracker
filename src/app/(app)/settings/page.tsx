@@ -6,6 +6,7 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import { Settings as SettingsIcon, AlertTriangle } from "lucide-react";
 import ClearDataSection from "./ClearDataSection";
+import InstallPWA from "./InstallPWA";
 
 interface Counts { mf: number; stocks: number; usStocks: number; crypto: number; gold: number; snapshots: number; }
 
@@ -68,6 +69,26 @@ export default function SettingsPage() {
           <div><label className="block text-sm font-semibold text-gray-400 mb-1">Email</label><div className="text-white font-medium">{user?.email}</div></div>
           <div><label className="block text-sm font-semibold text-gray-400 mb-1">User ID</label><div className="text-gray-500 text-xs font-mono">{user?.uid}</div></div>
           <div><label className="block text-sm font-semibold text-gray-400 mb-1">Total Records</label><div className="text-white font-medium">{totalCount.toLocaleString()} transactions</div></div>
+        </div>
+      </div>
+
+      {/* Install App (PWA) — at the bottom */}
+      <div className="glass-card">
+        <div className="p-4 md:p-6 border-b border-gray-800/60">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center">
+              <svg className="w-6 h-6 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-3-3v6m-7 4h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Install App</h2>
+              <p className="text-sm text-gray-400">Add FundTracker to your home screen</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 md:p-6">
+          <InstallPWA />
         </div>
       </div>
     </div>

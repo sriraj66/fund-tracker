@@ -269,10 +269,10 @@ export default function CryptoPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Coin / Market</th><th>Type</th>
-                    <th className="text-right">Volume</th><th className="text-right">Price (INR)</th>
-                    <th className="text-right">Total (INR)</th><th className="text-right">Brokerage</th>
-                    <th>Date</th><th className="text-center">Action</th>
+                    <th>Coin</th><th>Type</th>
+                    <th className="text-right col-tablet-hidden">Volume</th><th className="text-right col-tablet-hidden">Price (INR)</th>
+                    <th className="text-right">Total (INR)</th><th className="text-right col-mobile-hidden">Brokerage</th>
+                    <th className="col-mobile-hidden">Date</th><th className="text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -282,14 +282,14 @@ export default function CryptoPage() {
                       <tr key={t.id}>
                         <td>
                           <div className="font-mono font-semibold text-orange-400">{displayCoin || "—"}</div>
-                          <div className="text-xs text-gray-500">{t.market}</div>
+                          <div className="text-xs text-gray-500 col-mobile-hidden">{t.market}</div>
                         </td>
                         <td><span className={t.trade_type === "BUY" ? "badge-buy" : "badge-sell"}>{t.trade_type}</span></td>
-                        <td className="text-right text-gray-300">{formatNumber(Number(t.volume ?? 0), 8)}</td>
-                        <td className="text-right text-gray-300">{t.price ? formatINR(Number(t.price)) : "—"}</td>
+                        <td className="text-right text-gray-300 col-tablet-hidden">{formatNumber(Number(t.volume ?? 0), 8)}</td>
+                        <td className="text-right text-gray-300 col-tablet-hidden">{t.price ? formatINR(Number(t.price)) : "—"}</td>
                         <td className="text-right font-medium text-gray-200">{t.total_inr ? formatINR(Number(t.total_inr)) : "—"}</td>
-                        <td className="text-right text-yellow-400 text-xs">{t.fee_amount ? formatINR(Number(t.fee_amount)) : "—"}</td>
-                        <td className="text-gray-400 text-xs">{formatDate(t.transaction_date)}</td>
+                        <td className="text-right text-yellow-400 text-xs col-mobile-hidden">{t.fee_amount ? formatINR(Number(t.fee_amount)) : "—"}</td>
+                        <td className="text-gray-400 text-xs col-mobile-hidden">{formatDate(t.transaction_date)}</td>
                         <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/crypto" itemName={displayCoin} /></td>
                       </tr>
                     );

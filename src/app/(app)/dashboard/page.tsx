@@ -120,7 +120,7 @@ export default function DashboardPage() {
   const recentItems: RecentItem[] = [
     ...data.recentMf.map((t) => ({ id: t.id, label: t.scheme_name, sublabel: "Mutual Fund", amount: formatINR(t.amount), date: formatDate(t.transaction_date), type: t.transaction_type, side: (t.transaction_type === "REDEMPTION" ? "sell" : "buy") as "buy" | "sell", category: "mf" })),
     ...data.recentStocks.map((t) => ({ id: t.id, label: t.stock_name, sublabel: t.symbol, amount: formatINR(t.value), date: t.execution_date ? formatDate(t.execution_date) : "—", type: t.transaction_type, side: (t.transaction_type === "BUY" ? "buy" : "sell") as "buy" | "sell", category: "stocks" })),
-    ...data.recentUs.map((t) => ({ id: t.id, label: t.symbol, sublabel: "US Stock", amount: `${formatUSD(Math.abs(t.amount ?? 0))} (≈${formatINR(Math.abs(t.amount ?? 0) * usdToInr)})`, date: formatDate(t.transaction_date), type: t.side.toUpperCase(), side: t.side as "buy" | "sell", category: "us" })),
+    ...data.recentUs.map((t) => ({ id: t.id, label: t.symbol, sublabel: "US Stock", amount: formatUSD(Math.abs(t.amount ?? 0)), date: formatDate(t.transaction_date), type: t.side.toUpperCase(), side: t.side as "buy" | "sell", category: "us" })),
     ...data.recentCrypto.map((t) => ({ id: t.id, label: t.coin, sublabel: t.market, amount: formatINR(t.total_inr ?? 0), date: formatDate(t.transaction_date), type: t.trade_type, side: (t.trade_type === "BUY" ? "buy" : "sell") as "buy" | "sell", category: "crypto" })),
     ...data.recentGold.map((t) => ({ id: t.id, label: `Gold (${t.gold_type})`, sublabel: `${t.grams}g`, amount: formatINR(t.amount), date: formatDate(t.purchase_date), type: "BUY", side: "buy" as const, category: "gold" })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8);
@@ -186,16 +186,16 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="data-table">
-              <thead><tr><th>Asset</th><th>Category</th><th>Type</th><th className="text-right">Amount</th><th>Date</th></tr></thead>
+              <table className="data-table">
+              <thead><tr><th>Asset</th><th className="col-mobile-hidden">Category</th><th>Type</th><th className="text-right">Amount</th><th className="col-mobile-hidden">Date</th></tr></thead>
               <tbody>
                 {recentItems.map((item) => (
                   <tr key={item.id}>
-                    <td><div className="font-medium text-gray-200 truncate max-w-xs">{item.label}</div><div className="text-xs text-gray-500">{item.sublabel}</div></td>
-                    <td className="capitalize text-gray-400">{item.category}</td>
+                    <td><div className="font-medium text-gray-200 truncate max-w-[140px] sm:max-w-xs">{item.label}</div><div className="text-xs text-gray-500">{item.sublabel}</div></td>
+                    <td className="col-mobile-hidden capitalize text-gray-400">{item.category}</td>
                     <td><span className={item.side === "buy" ? "badge-buy" : "badge-sell"}>{item.type}</span></td>
-                    <td className="text-right font-medium text-gray-200">{item.amount}</td>
-                    <td className="text-gray-400 text-xs">{item.date}</td>
+                    <td className="text-right font-medium text-gray-200 text-xs sm:text-sm">{item.amount}</td>
+                    <td className="col-mobile-hidden text-gray-400 text-xs">{item.date}</td>
                   </tr>
                 ))}
               </tbody>

@@ -33,7 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen bg-gray-950">
+    <div className="flex min-h-screen bg-gray-950 overflow-x-hidden">
       {/* Sidebar — desktop: always visible, mobile: drawer */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -41,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       />
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col min-h-screen md:ml-60">
+      <div className="flex-1 flex flex-col min-h-screen md:ml-60 min-w-0">
         {/* Mobile top header — hidden on desktop */}
         <header className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/60 flex items-center px-4 gap-3">
           <button
@@ -60,8 +60,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content — top padding on mobile for fixed header */}
-        <main className="flex-1 pt-14 md:pt-0 overflow-x-hidden">
-          <div className="p-4 md:p-6 max-w-7xl mx-auto w-full">{children}</div>
+        <main className="flex-1 pt-14 md:pt-0 min-w-0" style={{ overflowX: "clip" }}>
+          <div className="px-3 py-4 sm:px-4 md:px-6 md:py-6 max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
     </div>
