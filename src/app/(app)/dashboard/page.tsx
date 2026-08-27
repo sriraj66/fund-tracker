@@ -157,9 +157,9 @@ export default function DashboardPage() {
               const pct = totalINR > 0 ? (item.value / totalINR) * 100 : 0;
               return (
                 <div key={item.label}>
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="text-gray-400">{item.label}</span>
-                    <span className="text-gray-300 font-medium">{formatINR(item.value)} <span className="text-gray-500">({pct.toFixed(1)}%)</span></span>
+                  <div className="flex items-center justify-between text-sm mb-1 gap-2 min-w-0">
+                    <span className="text-gray-400 shrink-0">{item.label}</span>
+                    <span className="text-gray-300 font-medium text-right truncate">{formatINR(item.value)} <span className="text-gray-500">({pct.toFixed(1)}%)</span></span>
                   </div>
                   <div className="w-full bg-gray-800 rounded-full h-2">
                     <div className={`${item.color} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
