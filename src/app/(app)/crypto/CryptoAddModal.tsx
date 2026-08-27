@@ -28,6 +28,7 @@ export default function CryptoAddModal({ onAdded }: Props) {
     trade_type: "BUY",
     price: "",
     total_inr: "",
+    total_paid: "",      // Total amount actually paid (value + brokerage)
     transaction_date: new Date().toISOString().slice(0, 10),
   });
 
@@ -42,11 +43,13 @@ export default function CryptoAddModal({ onAdded }: Props) {
     if (!user) return;
     setError(""); setLoading(true);
     try {
-      const price    = parseFloat(form.price)     || 0;
-      const total    = parseFloat(form.total_inr) || 0;
-      const volume   = price > 0 ? total / price : 0;
-      const coin     = extractCoin(form.market);
-      const isBuy    = form.trade_type === "BUY";
+      const price      = parseFloat(form.price)      || 0;
+      const total      = parseFloat(form.total_inr)  || 0;
+      const totalPaid  = parseFloat(form.total_paid) || total; // fallback to value if not set
+      const brokerage  = Math.max(0, totalPaid - total);       // brokerage = paid - value
+      const volume     = price > 0 ? total / price : 0;
+      const coin       = extractCoin(form.market);
+      const isBuy      = form.trade_type === "BUY";
 
       // Check if coin exists in crypto_holdings
       const holdingsRef = collection(db, "users", user.uid, "crypto_holdings");
@@ -81,10 +84,10 @@ export default function CryptoAddModal({ onAdded }: Props) {
         price:            price || null,
         volume:           volume || null,
         total_inr:        total || null,
+        total_paid:       totalPaid || null,
         tds_amount:       0,
-        fee_amount:       0,
+        fee_amount:       brokerage || 0,   // brokerage stored in fee_amount
         transaction_date: form.transaction_date,
-        // holding link for revert-on-delete
         holding_id:       holding_id,
         applied_qty:      applied_qty,
         applied_amount:   applied_amount,
@@ -99,9 +102,11 @@ export default function CryptoAddModal({ onAdded }: Props) {
     } finally { setLoading(false); }
   };
 
-  const price = parseFloat(form.price) || 0;
-  const total = parseFloat(form.total_inr) || 0;
-  const autoVolume = price > 0 ? (total / price) : 0;
+  const price       = parseFloat(form.price)      || 0;
+  const total       = parseFloat(form.total_inr)  || 0;
+  const totalPaid   = parseFloat(form.total_paid) || 0;
+  const autoBrok    = totalPaid > 0 && total > 0 ? Math.max(0, totalPaid - total) : 0;
+  const autoVolume  = price > 0 ? (total / price) : 0;
 
   return (
     <>
@@ -109,7 +114,7 @@ export default function CryptoAddModal({ onAdded }: Props) {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative glass-card w-full max-w-md p-6 shadow-2xl">
+          <div className="relative glass-card w-full max-w-md p-4 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-lg font-semibold text-white">Add Crypto Trade</h2>
@@ -118,7 +123,7 @@ export default function CryptoAddModal({ onAdded }: Props) {
               <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="form-label">Market * (e.g. BTCINR)</label>
                   <input name="market" className="form-input font-mono uppercase" placeholder="BTCINR"
@@ -132,7 +137,7 @@ export default function CryptoAddModal({ onAdded }: Props) {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="form-label">Price per Coin (₹) *</label>
                   <input type="number" name="price" className="form-input" placeholder="6410689.81"
@@ -149,6 +154,34 @@ export default function CryptoAddModal({ onAdded }: Props) {
                   ≈ <span className="text-gray-300 font-mono">{autoVolume.toFixed(8)}</span> coins (auto-calculated)
                 </p>
               )}
+
+              {/* Total Amount Paid + auto Brokerage */}
+              <div>
+                <label className="form-label">
+                  Total Amount Paid (₹)
+                  <span className="ml-1 text-gray-600 font-normal text-xs">— including brokerage</span>
+                </label>
+                <input
+                  type="number"
+                  name="total_paid"
+                  className="form-input"
+                  placeholder="e.g. 220.00"
+                  step="0.01"
+                  min="0"
+                  value={form.total_paid}
+                  onChange={handleChange}
+                />
+                {autoBrok > 0 && (
+                  <p className="text-xs mt-1 flex items-center gap-2">
+                    <span className="text-gray-500">Value:</span>
+                    <span className="text-gray-300 font-mono">₹{total.toFixed(2)}</span>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-gray-500">Brokerage:</span>
+                    <span className="text-yellow-400 font-mono">₹{autoBrok.toFixed(2)}</span>
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label className="form-label">Date *</label>
                 <input type="date" name="transaction_date" className="form-input"

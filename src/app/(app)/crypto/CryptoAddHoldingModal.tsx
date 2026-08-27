@@ -65,7 +65,7 @@ export default function CryptoAddHoldingModal({ onAdded }: Props) {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative glass-card w-full max-w-md p-6 shadow-2xl">
+          <div className="relative glass-card w-full max-w-md p-4 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-lg font-semibold text-white">Add Crypto Holding</h2>
@@ -79,7 +79,7 @@ export default function CryptoAddHoldingModal({ onAdded }: Props) {
                 <input name="coin_name" className="form-input font-mono uppercase" placeholder="BTC, ETH, SOL…"
                   value={form.coin_name} onChange={handleChange} required />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="form-label">Avg Buy Price (₹) *</label>
                   <input type="number" name="avg_buy_price" className="form-input" placeholder="e.g. 4500000"

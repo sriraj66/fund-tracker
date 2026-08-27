@@ -163,7 +163,7 @@ export default function MfMonthlyStats({ transactions, onDeleted }: Props) {
   return (
     <div className="space-y-6">
       {/* Bar Chart */}
-      <div className="glass-card p-6">
+      <div className="glass-card p-4 md:p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold text-white">Monthly Investment Activity</h2>
           <div className="flex items-center gap-1 bg-gray-800/60 rounded-lg p-1">
@@ -207,7 +207,7 @@ export default function MfMonthlyStats({ transactions, onDeleted }: Props) {
 
       {/* Month-wise accordion */}
       <div className="glass-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800/60">
+        <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60">
           <h2 className="text-base font-semibold text-white">Month-wise Transactions</h2>
           <p className="text-gray-500 text-xs mt-0.5">Click a month to view its transactions</p>
         </div>
@@ -223,7 +223,7 @@ export default function MfMonthlyStats({ transactions, onDeleted }: Props) {
                 <div className="flex items-center">
                   <button
                     onClick={() => setExpandedMonth(isOpen ? null : month.key)}
-                    className="flex-1 flex items-center justify-between px-6 py-4 hover:bg-gray-800/30 transition-colors group"
+                    className="flex-1 flex items-center justify-between px-4 py-4 md:px-6 hover:bg-gray-800/30 transition-colors group"
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${isOpen ? "text-violet-400" : "text-gray-500 group-hover:text-gray-300"}`}>
@@ -234,9 +234,9 @@ export default function MfMonthlyStats({ transactions, onDeleted }: Props) {
                         <span className="text-xs text-gray-500 ml-3">{month.txCount} transaction{month.txCount !== 1 ? "s" : ""}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6 text-sm">
-                      {month.purchases > 0 && (<div className="text-right"><div className="text-xs text-gray-500">Purchased</div><div className="text-violet-400 font-medium">{formatINR(month.purchases)}</div></div>)}
-                      {month.redemptions > 0 && (<div className="text-right"><div className="text-xs text-gray-500">Redeemed</div><div className="text-red-400 font-medium">{formatINR(month.redemptions)}</div></div>)}
+                    <div className="flex items-center gap-3 md:gap-6 text-sm">
+                      {month.purchases > 0 && (<div className="hidden sm:block text-right"><div className="text-xs text-gray-500">Purchased</div><div className="text-violet-400 font-medium">{formatINR(month.purchases)}</div></div>)}
+                      {month.redemptions > 0 && (<div className="hidden sm:block text-right"><div className="text-xs text-gray-500">Redeemed</div><div className="text-red-400 font-medium">{formatINR(month.redemptions)}</div></div>)}
                       <div className="text-right min-w-[100px]">
                         <div className="text-xs text-gray-500">Net</div>
                         <div className={`font-semibold ${net >= 0 ? "text-emerald-400" : "text-red-400"}`}>{net >= 0 ? "+" : ""}{formatINR(net)}</div>
@@ -289,7 +289,7 @@ export default function MfMonthlyStats({ transactions, onDeleted }: Props) {
 
                       {/* Pagination for this month's transactions */}
                       {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-6 py-2.5 border-t border-gray-800/40 bg-gray-900/60">
+                        <div className="flex items-center justify-between px-4 py-2.5 md:px-6 border-t border-gray-800/40 bg-gray-900/60">
                           <p className="text-xs text-gray-500">
                             <span className="text-gray-300 font-medium">{(currentPage - 1) * TX_PER_PAGE + 1}–{Math.min(currentPage * TX_PER_PAGE, sorted.length)}</span>
                             {" "}of <span className="text-gray-300 font-medium">{sorted.length}</span>
@@ -311,7 +311,7 @@ export default function MfMonthlyStats({ transactions, onDeleted }: Props) {
           })}
           {/* Accordion pagination */}
           {accordionTotalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800/60 bg-gray-900/30">
+            <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60 bg-gray-900/30">
               <p className="text-xs text-gray-500">
                 Months <span className="text-gray-300 font-medium">{(accordionPage - 1) * ACCORDION_PAGE_SIZE + 1}–{Math.min(accordionPage * ACCORDION_PAGE_SIZE, monthGroups.length)}</span> of <span className="text-gray-300 font-medium">{monthGroups.length}</span>
               </p>

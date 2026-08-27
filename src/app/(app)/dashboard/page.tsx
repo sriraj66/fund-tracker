@@ -5,12 +5,15 @@ import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import StatCard from "@/components/StatCard";
-import { BarChart3, TrendingUp, Globe, Bitcoin, Gem, Wallet } from "lucide-react";
+import { BarChart3, TrendingUp, Globe, Bitcoin, Gem, Wallet, Receipt } from "lucide-react";
 import { formatINR, formatUSD, formatDate } from "@/lib/utils";
 import Link from "next/link";
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [expenseThisMonth, setExpenseThisMonth] = useState<number>(0);
+  const [expenseCount, setExpenseCount] = useState<number>(0);
+
   const [data, setData] = useState<{
     usdToInr: number;
     mfData: { amount: number; transaction_type: string }[];
@@ -50,6 +53,19 @@ export default function DashboardPage() {
           getDocs(query(base("crypto_transactions"), orderBy("transaction_date", "desc"), limit(3))),
           getDocs(query(base("gold_transactions"), orderBy("purchase_date", "desc"), limit(3))),
         ]);
+
+        // Fetch expense total for current month
+        const now = new Date();
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        try {
+          const expSnap = await getDocs(collection(db, "users", uid, "expenses"));
+          const allExp = expSnap.docs.map((d) => d.data() as { amount: number; date: string });
+          const thisMonthExp = allExp.filter((e) => e.date?.slice(0, 7) === monthKey);
+          setExpenseThisMonth(thisMonthExp.reduce((s, e) => s + Number(e.amount), 0));
+          setExpenseCount(thisMonthExp.length);
+        } catch {
+          // expenses collection may not exist yet — silently ignore
+        }
 
         const settingsDoc = settingsSnap.docs.find((d) => d.id === "data");
         const usdToInr = settingsDoc?.data()?.usd_to_inr_rate ?? 83.50;
@@ -112,20 +128,21 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Portfolio Dashboard</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-white">Portfolio Dashboard</h1>
         <p className="text-gray-400 text-sm mt-1">Welcome back, {user?.displayName || user?.email?.split("@")[0]}</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard title="Total Invested (INR)" value={formatINR(totalINR)} subtitle="MF + Stocks + US + Crypto + Gold" icon={Wallet} iconColor="text-sky-400" iconBg="bg-sky-500/10" className="col-span-2 lg:col-span-1" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard title="Total Invested (INR)" value={formatINR(totalINR)} subtitle="MF + Stocks + US + Crypto + Gold" icon={Wallet} iconColor="text-sky-400" iconBg="bg-sky-500/10" className="sm:col-span-2 lg:col-span-1" />
         <StatCard title="Mutual Funds" value={formatINR(netMf)} subtitle={`${mfData.length} transactions`} icon={BarChart3} iconColor="text-violet-400" iconBg="bg-violet-500/10" />
         <StatCard title="Indian Stocks" value={formatINR(netStocks)} subtitle={`${stockData.length} orders`} icon={TrendingUp} iconColor="text-emerald-400" iconBg="bg-emerald-500/10" />
         <StatCard title="US Stocks" value={formatUSD(netUsUSD)} subtitle={`≈ ${formatINR(netUsINR)} • ${usData.length} trades`} icon={Globe} iconColor="text-blue-400" iconBg="bg-blue-500/10" />
         <StatCard title="Crypto" value={formatINR(cryptoTotal)} subtitle={`${cryptoData.length} trades`} icon={Bitcoin} iconColor="text-orange-400" iconBg="bg-orange-500/10" />
         <StatCard title="Gold" value={formatINR(goldTotal)} subtitle={`${goldData.length} purchase${goldData.length !== 1 ? "s" : ""}${goldHoldingsData.length > 0 ? ` + ${goldHoldingsData.length} holding${goldHoldingsData.length !== 1 ? "s" : ""}` : ""}`} icon={Gem} iconColor="text-yellow-400" iconBg="bg-yellow-500/10" />
+        <StatCard title="Expenses (This Month)" value={formatINR(expenseThisMonth)} subtitle={`${expenseCount} expense${expenseCount !== 1 ? "s" : ""} recorded`} icon={Receipt} iconColor="text-rose-400" iconBg="bg-rose-500/10" />
       </div>
 
-      <div className="glass-card p-6">
+      <div className="glass-card p-4 md:p-6">
         <h2 className="text-base font-semibold text-white mb-4">Asset Allocation (INR)</h2>
         {totalINR === 0 ? (
           <p className="text-gray-500 text-sm">No data yet. Add transactions to see allocation.</p>
@@ -155,7 +172,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="glass-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800/60 flex items-center justify-between">
+        <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60 flex items-center justify-between">
           <h2 className="text-base font-semibold text-white">Recent Activity</h2>
         </div>
         {recentItems.length === 0 ? (

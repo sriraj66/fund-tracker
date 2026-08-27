@@ -138,7 +138,7 @@ export default function GoldMonthlyStats({ transactions, onDeleted }: Props) {
   return (
     <div className="space-y-6">
       {/* Bar Chart */}
-      <div className="glass-card p-6">
+      <div className="glass-card p-4 md:p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold text-white">Monthly Investment Activity</h2>
           <div className="flex items-center gap-1 bg-gray-800/60 rounded-lg p-1">
@@ -191,7 +191,7 @@ export default function GoldMonthlyStats({ transactions, onDeleted }: Props) {
 
       {/* Month-wise accordion */}
       <div className="glass-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800/60">
+        <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60">
           <h2 className="text-base font-semibold text-white">Month-wise Transactions</h2>
           <p className="text-gray-500 text-xs mt-0.5">Click a month to view its transactions</p>
         </div>
@@ -206,7 +206,7 @@ export default function GoldMonthlyStats({ transactions, onDeleted }: Props) {
                 <div className="flex items-center">
                   <button
                     onClick={() => setExpandedMonth(isOpen ? null : month.key)}
-                    className="flex-1 flex items-center justify-between px-6 py-4 hover:bg-gray-800/30 transition-colors group"
+                    className="flex-1 flex items-center justify-between px-4 py-4 md:px-6 hover:bg-gray-800/30 transition-colors group"
                   >
                     <div className="flex items-center gap-3">
                       <div
@@ -223,8 +223,8 @@ export default function GoldMonthlyStats({ transactions, onDeleted }: Props) {
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6 text-sm">
-                      <div className="text-right">
+                    <div className="flex items-center gap-3 md:gap-6 text-sm">
+                      <div className="hidden sm:block text-right">
                         <div className="text-xs text-gray-500">Grams</div>
                         <div className="text-amber-400 font-medium">{formatNumber(month.grams, 4)} g</div>
                       </div>
@@ -300,7 +300,7 @@ export default function GoldMonthlyStats({ transactions, onDeleted }: Props) {
 
                       {/* Per-month transaction pagination */}
                       {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-6 py-2.5 border-t border-gray-800/40 bg-gray-900/60">
+                        <div className="flex items-center justify-between px-4 py-2.5 md:px-6 border-t border-gray-800/40 bg-gray-900/60">
                           <p className="text-xs text-gray-500">
                             <span className="text-gray-300 font-medium">
                               {(currentPage - 1) * TX_PER_PAGE + 1}–{Math.min(currentPage * TX_PER_PAGE, sorted.length)}
@@ -339,7 +339,7 @@ export default function GoldMonthlyStats({ transactions, onDeleted }: Props) {
 
           {/* Accordion pagination */}
           {accordionTotalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800/60 bg-gray-900/30">
+            <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60 bg-gray-900/30">
               <p className="text-xs text-gray-500">
                 Months{" "}
                 <span className="text-gray-300 font-medium">

@@ -51,7 +51,7 @@ export default function GoldAddHoldingModal({ onAdded }: Props) {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative glass-card w-full max-w-md p-6 shadow-2xl">
+          <div className="relative glass-card w-full max-w-md p-4 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-white">Add Gold Holding</h2>
               <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>

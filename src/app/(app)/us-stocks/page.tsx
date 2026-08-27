@@ -29,7 +29,7 @@ function PaginationBar({ page, totalPages, total, onPage }: { page: number; tota
       return acc;
     }, []);
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800/60">
+    <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60">
       <p className="text-xs text-gray-500">
         Showing <span className="text-gray-300 font-medium">{from}–{to}</span> of{" "}
         <span className="text-gray-300 font-medium">{total}</span> trades
@@ -98,23 +98,23 @@ export default function UsStocksPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-white">US Stocks</h1>
-          <p className="text-gray-400 text-sm mt-1 flex items-center gap-2">
-            INDMoney / Alpaca global portfolio (USD)
+          <h1 className="text-xl md:text-2xl font-bold text-white">US Stocks</h1>
+          <div className="text-gray-400 text-sm mt-1 flex flex-wrap items-center gap-2">
+            <span>INDMoney / Alpaca global portfolio (USD)</span>
             <span className="text-gray-600">•</span>
             <ExchangeRateSettings currentRate={usdToInr} />
-          </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="page-header-actions">
           <ImportButton endpoint="/api/import/us-stocks" accept=".pdf" label="Import Transactions" hint="INDMoney Monthly Statement PDF (Alpaca)" />
           <ImportButton endpoint="/api/import/holdings/us-stocks" accept=".xls,.xlsx" label="Import Holdings" hint="INDMoney US Stocks Holdings Report XLS" />
           <UsStockAddModal onAdded={fetchData} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard title="Net Invested" value={formatUSD(netInvested)} subtitle={`≈ ${formatINR(netInvested * usdToInr)} at ₹${usdToInr}/USD`} icon={Globe} iconColor="text-blue-400" iconBg="bg-blue-500/10" />
         <StatCard title="Total Bought" value={formatUSD(totalBought)} subtitle={`≈ ${formatINR(totalBought * usdToInr)} • ${rows.filter((t) => t.side === "buy").length} orders`} icon={TrendingUp} iconColor="text-emerald-400" iconBg="bg-emerald-500/10" />
         <StatCard title="Total Sold" value={formatUSD(totalSold)} subtitle={`≈ ${formatINR(totalSold * usdToInr)} • ${rows.filter((t) => t.side === "sell").length} orders`} icon={TrendingDown} iconColor="text-red-400" iconBg="bg-red-500/10" />
@@ -124,7 +124,7 @@ export default function UsStocksPage() {
 
       {holdings.length > 0 && (
         <div className="glass-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Current Holdings</h2></div>
+          <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Current Holdings</h2></div>
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead><tr><th>Symbol</th><th className="text-right">Shares</th><th className="text-right">Avg Cost</th><th className="text-right">Invested (USD)</th></tr></thead>
@@ -135,7 +135,7 @@ export default function UsStocksPage() {
       )}
 
       <div className="glass-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Trade History</h2></div>
+        <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Trade History</h2></div>
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center"><div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-3"><Plus className="w-6 h-6 text-blue-400" /></div><p className="text-gray-400 text-sm font-medium">No US stock trades yet</p></div>
         ) : (

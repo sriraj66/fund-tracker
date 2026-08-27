@@ -65,7 +65,7 @@ export default function AllocationChart({ latestSnapshot }: Props) {
 
   if (!latestSnapshot) {
     return (
-      <div className="glass-card p-6 flex flex-col items-center justify-center min-h-[320px]">
+      <div className="glass-card p-4 md:p-6 flex flex-col items-center justify-center min-h-[320px]">
         <PieChartIcon className="w-8 h-8 text-gray-600 mb-3" />
         <p className="text-gray-500 text-sm">No allocation data</p>
       </div>
@@ -97,7 +97,7 @@ export default function AllocationChart({ latestSnapshot }: Props) {
 
   return (
     <>
-      <div className="glass-card p-6">
+      <div className="glass-card p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">

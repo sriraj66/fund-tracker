@@ -25,7 +25,7 @@ function PaginationBar({ page, totalPages, total, onPage }: { page: number; tota
   const from = (page - 1) * SNAPSHOT_PAGE_SIZE + 1;
   const to = Math.min(page * SNAPSHOT_PAGE_SIZE, total);
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800/60">
+    <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60">
       <p className="text-xs text-gray-500">
         Showing <span className="text-gray-300 font-medium">{from}–{to}</span> of{" "}
         <span className="text-gray-300 font-medium">{total}</span> snapshots
@@ -79,16 +79,16 @@ export default function PortfolioTrackerPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold text-white">Portfolio Tracker</h1><p className="text-gray-400 text-sm mt-1">Historical portfolio performance snapshots</p></div>
-        <div className="flex items-center gap-2">
+      <div className="page-header">
+        <div><h1 className="text-xl md:text-2xl font-bold text-white">Portfolio Tracker</h1><p className="text-gray-400 text-sm mt-1">Historical portfolio performance snapshots</p></div>
+        <div className="page-header-actions">
           <ImportButton endpoint="/api/import/portfolio-snapshots" accept=".xlsx,.xls,.csv" label="Import Snapshots" hint="Upload your portfolio tracking sheet" />
           <SnapshotAddModal onAdded={fetchData} />
         </div>
       </div>
 
       {rows.length === 0 ? (
-        <div className="glass-card p-12 text-center">
+        <div className="glass-card p-6 md:p-12 text-center">
           <div className="w-16 h-16 rounded-full bg-sky-500/10 flex items-center justify-center mx-auto mb-4"><BarChart3 className="w-8 h-8 text-sky-400" /></div>
           <h3 className="text-lg font-semibold text-white mb-2">No Portfolio Snapshots Yet</h3>
           <p className="text-gray-400 text-sm mb-6 max-w-md mx-auto">Import your historical portfolio data or manually add snapshots to track performance over time</p>
@@ -99,18 +99,18 @@ export default function PortfolioTrackerPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="glass-card p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full">
+            <div className="glass-card p-4 md:p-6">
               <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center"><Calendar className="w-5 h-5 text-sky-400" /></div><div><p className="text-xs text-gray-500 uppercase tracking-wider">Latest Snapshot</p><p className="text-lg font-semibold text-white">{latestSnapshot ? formatDate(latestSnapshot.snapshot_date) : "—"}</p></div></div>
               <div className="text-2xl font-bold text-white">{latestSnapshot ? formatINR(latestSnapshot.total_value) : "—"}</div>
               <p className="text-sm text-gray-400 mt-1">Invested: {latestSnapshot ? formatINR(latestSnapshot.total_invested) : "—"}</p>
             </div>
-            <div className="glass-card p-6">
+            <div className="glass-card p-4 md:p-6">
               <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center"><TrendingUp className="w-5 h-5 text-emerald-400" /></div><div><p className="text-xs text-gray-500 uppercase tracking-wider">Absolute Return</p><p className="text-lg font-semibold text-emerald-400">{absoluteReturn.toFixed(2)}%</p></div></div>
               <div className="text-2xl font-bold text-emerald-400">{formatINR(absoluteProfit)}</div>
               <p className="text-sm text-gray-400 mt-1">Current performance</p>
             </div>
-            <div className="glass-card p-6">
+            <div className="glass-card p-4 md:p-6">
               <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center"><BarChart3 className="w-5 h-5 text-violet-400" /></div><div><p className="text-xs text-gray-500 uppercase tracking-wider">Snapshots</p><p className="text-lg font-semibold text-white">{rows.length}</p></div></div>
               <div className="text-2xl font-bold text-white">{rows.length} months</div>
               <p className="text-sm text-gray-400 mt-1">Historical data points</p>
@@ -119,13 +119,13 @@ export default function PortfolioTrackerPage() {
 
           <PortfolioAnalytics snapshots={rows} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <AllocationChart latestSnapshot={latestSnapshot} />
             <PerformanceChart snapshots={rows} />
           </div>
 
           <div className="glass-card overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-800/60 flex items-center justify-between">
+            <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold text-white">Snapshot History</h2>
                 <p className="text-xs text-gray-500 mt-0.5">{rows.length} total snapshots</p>

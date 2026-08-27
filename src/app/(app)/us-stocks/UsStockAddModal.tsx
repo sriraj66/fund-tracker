@@ -62,22 +62,22 @@ export default function UsStockAddModal({ onAdded }: Props) {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative glass-card w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative glass-card w-full max-w-lg p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-white">Add US Stock Trade</h2>
               <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">Symbol *</label><input name="symbol" className="form-input" placeholder="AAPL" value={form.symbol} onChange={handleChange} required /></div>
                 <div><label className="form-label">Side *</label><select name="side" className="form-input" value={form.side} onChange={handleChange}><option value="buy">BUY</option><option value="sell">SELL</option></select></div>
               </div>
               <div><label className="form-label">Description</label><input name="description" className="form-input" placeholder="Apple Inc." value={form.description} onChange={handleChange} /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">Shares *</label><input type="number" name="quantity" className="form-input" placeholder="1.0" step="0.000001" min="0" value={form.quantity} onChange={handleChange} required /></div>
                 <div><label className="form-label">Price (USD)</label><input type="number" name="price" className="form-input" placeholder="185.00" step="0.01" value={form.price} onChange={handleChange} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">Amount (USD)</label><input type="number" name="amount" className="form-input" placeholder="185.00" step="0.01" value={form.amount} onChange={handleChange} /></div>
                 <div><label className="form-label">Date *</label><input type="date" name="transaction_date" className="form-input" value={form.transaction_date} onChange={handleChange} required /></div>
               </div>

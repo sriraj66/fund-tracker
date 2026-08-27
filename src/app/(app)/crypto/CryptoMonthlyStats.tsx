@@ -136,7 +136,7 @@ export default function CryptoMonthlyStats({ transactions, onDeleted }: Props) {
   return (
     <div className="space-y-6">
       {/* Bar Chart */}
-      <div className="glass-card p-6">
+      <div className="glass-card p-4 md:p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold text-white">Monthly Trading Activity</h2>
           <div className="flex items-center gap-1 bg-gray-800/60 rounded-lg p-1">
@@ -167,7 +167,7 @@ export default function CryptoMonthlyStats({ transactions, onDeleted }: Props) {
 
       {/* Month-wise accordion */}
       <div className="glass-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800/60">
+        <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60">
           <h2 className="text-base font-semibold text-white">Month-wise Transactions</h2>
           <p className="text-gray-500 text-xs mt-0.5">Click a month to view its trades</p>
         </div>
@@ -179,7 +179,7 @@ export default function CryptoMonthlyStats({ transactions, onDeleted }: Props) {
               <div key={month.key}>
                 <div className="flex items-center">
                   <button onClick={() => setExpandedMonth(isOpen ? null : month.key)}
-                    className="flex-1 flex items-center justify-between px-6 py-4 hover:bg-gray-800/30 transition-colors group">
+                    className="flex-1 flex items-center justify-between px-4 py-4 md:px-6 hover:bg-gray-800/30 transition-colors group">
                     <div className="flex items-center gap-3">
                       <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${isOpen ? "text-orange-400" : "text-gray-500 group-hover:text-gray-300"}`}>
                         {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -189,9 +189,9 @@ export default function CryptoMonthlyStats({ transactions, onDeleted }: Props) {
                         <span className="text-xs text-gray-500 ml-3">{month.txCount} trade{month.txCount !== 1 ? "s" : ""}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6 text-sm">
-                      {month.bought > 0 && (<div className="text-right"><div className="text-xs text-gray-500">Bought</div><div className="text-emerald-400 font-medium">{formatINR(month.bought)}</div></div>)}
-                      {month.sold > 0 && (<div className="text-right"><div className="text-xs text-gray-500">Sold</div><div className="text-red-400 font-medium">{formatINR(month.sold)}</div></div>)}
+                    <div className="flex items-center gap-3 md:gap-6 text-sm">
+                      {month.bought > 0 && (<div className="hidden sm:block text-right"><div className="text-xs text-gray-500">Bought</div><div className="text-emerald-400 font-medium">{formatINR(month.bought)}</div></div>)}
+                      {month.sold > 0 && (<div className="hidden sm:block text-right"><div className="text-xs text-gray-500">Sold</div><div className="text-red-400 font-medium">{formatINR(month.sold)}</div></div>)}
                       <div className="text-right min-w-[100px]">
                         <div className="text-xs text-gray-500">Net</div>
                         <div className={`font-semibold ${net >= 0 ? "text-emerald-400" : "text-red-400"}`}>{net >= 0 ? "+" : ""}{formatINR(net)}</div>
@@ -217,7 +217,7 @@ export default function CryptoMonthlyStats({ transactions, onDeleted }: Props) {
                       <div className="overflow-x-auto">
                         <table className="data-table">
                           <thead>
-                            <tr><th>Coin / Market</th><th>Type</th><th className="text-right">Volume</th><th className="text-right">Price</th><th className="text-right">Total (INR)</th><th className="text-right">TDS</th><th>Date</th><th className="text-center">Action</th></tr>
+                            <tr><th>Coin / Market</th><th>Type</th><th className="text-right">Volume</th><th className="text-right">Price</th><th className="text-right">Total (INR)</th><th className="text-right">Brokerage</th><th>Date</th><th className="text-center">Action</th></tr>
                           </thead>
                           <tbody>
                             {pageRows.map((t) => (
@@ -227,7 +227,7 @@ export default function CryptoMonthlyStats({ transactions, onDeleted }: Props) {
                                 <td className="text-right text-gray-300">{formatNumber(Number(t.volume ?? 0), 8)}</td>
                                 <td className="text-right text-gray-300">{t.price ? formatINR(Number(t.price)) : "—"}</td>
                                 <td className="text-right font-medium text-gray-200">{t.total_inr ? formatINR(Number(t.total_inr)) : "—"}</td>
-                                <td className="text-right text-yellow-400 text-xs">{t.tds_amount ? formatINR(Number(t.tds_amount)) : "₹0"}</td>
+                                <td className="text-right text-yellow-400 text-xs">{t.fee_amount ? formatINR(Number(t.fee_amount)) : "—"}</td>
                                 <td className="text-gray-400 text-xs">{formatDate(t.transaction_date)}</td>
                                 <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/crypto" itemName={t.coin} /></td>
                               </tr>
@@ -236,7 +236,7 @@ export default function CryptoMonthlyStats({ transactions, onDeleted }: Props) {
                         </table>
                       </div>
                       {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-6 py-2.5 border-t border-gray-800/40 bg-gray-900/60">
+                        <div className="flex items-center justify-between px-4 py-2.5 md:px-6 border-t border-gray-800/40 bg-gray-900/60">
                           <p className="text-xs text-gray-500">
                             <span className="text-gray-300 font-medium">{(currentPage - 1) * TX_PER_PAGE + 1}–{Math.min(currentPage * TX_PER_PAGE, sorted.length)}</span>
                             {" "}of <span className="text-gray-300 font-medium">{sorted.length}</span>
@@ -258,7 +258,7 @@ export default function CryptoMonthlyStats({ transactions, onDeleted }: Props) {
           })}
 
           {accordionTotalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800/60 bg-gray-900/30">
+            <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60 bg-gray-900/30">
               <p className="text-xs text-gray-500">
                 Months <span className="text-gray-300 font-medium">{(accordionPage - 1) * ACCORDION_PAGE_SIZE + 1}–{Math.min(accordionPage * ACCORDION_PAGE_SIZE, monthGroups.length)}</span> of <span className="text-gray-300 font-medium">{monthGroups.length}</span>
               </p>

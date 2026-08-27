@@ -65,17 +65,17 @@ export default function GoldAddModal({ onAdded }: Props) {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative glass-card w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative glass-card w-full max-w-lg p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-white">Add Gold Purchase</h2>
               <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">Purchase Date *</label><input type="date" name="purchase_date" className="form-input" value={form.purchase_date} onChange={handleChange} required /></div>
                 <div><label className="form-label">Gold Type *</label><select name="gold_type" className="form-input" value={form.gold_type} onChange={handleChange}><option>Digital Gold</option><option>Physical Gold</option><option>Sovereign Gold Bond</option><option>Gold ETF</option><option>Gold MF</option></select></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">Grams *</label><input type="number" name="grams" className="form-input" placeholder="1.0000" step="0.0001" min="0" value={form.grams} onChange={handleChange} required /></div>
                 <div><label className="form-label">Price per gram (₹) *</label><input type="number" name="price_per_gram" className="form-input" placeholder="7500.00" step="0.01" min="0" value={form.price_per_gram} onChange={handleChange} required /></div>
               </div>

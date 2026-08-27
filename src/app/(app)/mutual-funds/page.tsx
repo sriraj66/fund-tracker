@@ -35,7 +35,7 @@ function PaginationBar({
     }, []);
 
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800/60">
+    <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60">
       <p className="text-xs text-gray-500">
         Showing <span className="text-gray-300 font-medium">{from}–{to}</span> of{" "}
         <span className="text-gray-300 font-medium">{total}</span> {label}
@@ -114,16 +114,16 @@ export default function MutualFundsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold text-white">Mutual Funds</h1><p className="text-gray-400 text-sm mt-1">Track your MF investments</p></div>
-        <div className="flex items-center gap-2">
+      <div className="page-header">
+        <div><h1 className="text-xl md:text-2xl font-bold text-white">Mutual Funds</h1><p className="text-gray-400 text-sm mt-1">Track your MF investments</p></div>
+        <div className="page-header-actions">
           <ImportButton endpoint="/api/import/mf" accept=".xlsx,.xls" label="Import Transactions" hint="INDMoney Mutual Funds Order History XLSX" />
           <ImportButton endpoint="/api/import/holdings/mf" accept=".xlsx,.xls" label="Import Holdings" hint="INDMoney Mutual Funds Holdings Statement XLSX" />
           <MfAddModal onAdded={fetchData} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard title="Net Invested" value={formatINR(netInvested)} subtitle="Purchased minus redeemed" icon={BarChart3} iconColor="text-violet-400" iconBg="bg-violet-500/10" />
         <StatCard title="Total Purchased" value={formatINR(totalPurchased)} subtitle={`${rows.filter((t) => !isRedemption(t.transaction_type)).length} transactions`} icon={TrendingUp} iconColor="text-emerald-400" iconBg="bg-emerald-500/10" />
         <StatCard title="Total Redeemed" value={formatINR(totalRedeemed)} subtitle={`${rows.filter((t) => isRedemption(t.transaction_type)).length} redemptions`} icon={BarChart3} iconColor="text-red-400" iconBg="bg-red-500/10" />
@@ -135,7 +135,7 @@ export default function MutualFundsPage() {
       {/* Scheme Holdings — paginated at 8 per page */}
       {schemes.length > 0 && (
         <div className="glass-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Scheme Holdings</h2></div>
+          <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Scheme Holdings</h2></div>
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead><tr><th>Scheme Name</th><th className="text-right">Units</th><th className="text-right">Invested</th><th className="text-right">Transactions</th></tr></thead>
@@ -157,7 +157,7 @@ export default function MutualFundsPage() {
 
       {/* Transaction History — paginated at 20 per page */}
       <div className="glass-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Transaction History</h2></div>
+        <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Transaction History</h2></div>
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center mx-auto mb-3"><Plus className="w-6 h-6 text-violet-400" /></div>

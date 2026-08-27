@@ -33,7 +33,7 @@ function PaginationBar({
       return acc;
     }, []);
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800/60">
+    <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60">
       <p className="text-xs text-gray-500">
         Showing <span className="text-gray-300 font-medium">{from}–{to}</span> of{" "}
         <span className="text-gray-300 font-medium">{total}</span> {label}
@@ -135,15 +135,15 @@ export default function GoldPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold text-white">Gold</h1><p className="text-gray-400 text-sm mt-1">Track physical, digital &amp; sovereign gold</p></div>
-        <div className="flex items-center gap-2">
+      <div className="page-header">
+        <div><h1 className="text-xl md:text-2xl font-bold text-white">Gold</h1><p className="text-gray-400 text-sm mt-1">Track physical, digital &amp; sovereign gold</p></div>
+        <div className="page-header-actions">
           <GoldAddHoldingModal onAdded={fetchData} />
           <GoldAddModal onAdded={fetchData} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard title="Total Invested" value={formatINR(totalAmount)} subtitle={`${rows.length} purchase${rows.length !== 1 ? "s" : ""}${holdings.length > 0 ? ` + ${holdings.length} holding${holdings.length !== 1 ? "s" : ""}` : ""}`} icon={Gem} iconColor="text-yellow-400" iconBg="bg-yellow-500/10" />
         <StatCard title="Total Weight" value={`${formatNumber(totalGrams, 4)} g`} subtitle={`${formatNumber(txGrams, 4)} g tx + ${formatNumber(holdingsGrams, 4)} g holdings`} icon={Scale} iconColor="text-amber-400" iconBg="bg-amber-500/10" />
         <StatCard title="Avg Buy Price" value={formatINR(avgPrice)} subtitle="Per gram (weighted avg)" icon={Gem} iconColor="text-orange-400" iconBg="bg-orange-500/10" />
@@ -152,7 +152,7 @@ export default function GoldPage() {
       {/* Gold Holdings (manual entries) */}
       {holdings.length > 0 && (
         <div className="glass-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-800/60 flex items-center justify-between">
+          <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60 flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-white">Gold Holdings</h2>
               <p className="text-gray-500 text-xs mt-0.5">Manually tracked physical gold holdings</p>
@@ -211,7 +211,7 @@ export default function GoldPage() {
       {/* Holdings by transaction type */}
       {byType.length > 0 && (
         <div className="glass-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Purchases by Type</h2></div>
+          <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Purchases by Type</h2></div>
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead><tr><th>Gold Type</th><th className="text-right">Total Grams</th><th className="text-right">Total Invested</th><th className="text-right">Avg Price/gram</th><th className="text-right">Purchases</th></tr></thead>
@@ -234,7 +234,7 @@ export default function GoldPage() {
 
       {/* Purchase History — paginated */}
       <div className="glass-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Purchase History</h2></div>
+        <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Purchase History</h2></div>
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto mb-3"><Plus className="w-6 h-6 text-yellow-400" /></div>

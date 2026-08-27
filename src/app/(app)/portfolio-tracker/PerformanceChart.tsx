@@ -122,7 +122,7 @@ export default function PerformanceChart({ snapshots }: Props) {
 
   if (snapshots.length === 0) {
     return (
-      <div className="glass-card p-6 flex flex-col items-center justify-center min-h-[320px]">
+      <div className="glass-card p-4 md:p-6 flex flex-col items-center justify-center min-h-[320px]">
         <TrendingUp className="w-8 h-8 text-gray-600 mb-3" />
         <p className="text-gray-500 text-sm">No performance data</p>
       </div>
@@ -147,7 +147,7 @@ export default function PerformanceChart({ snapshots }: Props) {
 
   return (
     <>
-      <div className="glass-card p-6">
+      <div className="glass-card p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">

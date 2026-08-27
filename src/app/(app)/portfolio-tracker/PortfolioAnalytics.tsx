@@ -139,7 +139,7 @@ export default function PortfolioAnalytics({ snapshots }: PortfolioAnalyticsProp
   if (!analytics) return null;
 
   return (
-    <div className="glass-card p-6">
+    <div className="glass-card p-4 md:p-6">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-purple-500/30 flex items-center justify-center">
           <Target className="w-6 h-6 text-purple-400" />

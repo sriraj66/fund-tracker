@@ -83,3 +83,38 @@ export interface PortfolioSummary {
   cryptoTotal: number;
   goldTotal: number;
 }
+
+export interface ExpenseCategory {
+  id: string;
+  user_id?: string;
+  name: string;
+  icon: string; // lucide icon name
+  color: string; // tailwind color key e.g. "red", "blue"
+  budget_limit?: number | null;
+  created_at: string;
+  isDefault?: boolean;
+}
+
+export interface ExpenseTag {
+  id: string;
+  user_id?: string;
+  name: string;
+  color: string; // tailwind color key
+  created_at: string;
+}
+
+export interface Expense {
+  id: string;
+  user_id?: string;
+  amount: number;
+  category_id: string;
+  category_name: string;
+  category_icon: string;
+  category_color: string;
+  description: string;
+  date: string; // YYYY-MM-DD
+  payment_method: "Cash" | "Card" | "UPI" | "Net Banking" | "Other";
+  tags?: string[]; // array of tag names
+  notes?: string | null;
+  created_at: string;
+}

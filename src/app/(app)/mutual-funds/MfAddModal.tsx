@@ -57,18 +57,18 @@ export default function MfAddModal({ onAdded }: Props) {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative glass-card w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative glass-card w-full max-w-lg p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-white">Add MF Transaction</h2>
               <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div><label className="form-label">Scheme Name *</label><input name="scheme_name" className="form-input" placeholder="Nippon India Small Cap Fund - Direct" value={form.scheme_name} onChange={handleChange} required /></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">Transaction Type *</label><select name="transaction_type" className="form-input" value={form.transaction_type} onChange={handleChange}><option value="PURCHASE">PURCHASE</option><option value="SIP">SIP</option><option value="REDEMPTION">REDEMPTION</option></select></div>
                 <div><label className="form-label">Date *</label><input type="date" name="transaction_date" className="form-input" value={form.transaction_date} onChange={handleChange} required /></div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">Units</label><input type="number" name="units" className="form-input" placeholder="100.0000" step="0.0001" value={form.units} onChange={handleChange} /></div>
                 <div><label className="form-label">NAV (₹)</label><input type="number" name="nav" className="form-input" placeholder="45.00" step="0.01" value={form.nav} onChange={handleChange} /></div>
               </div>

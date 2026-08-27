@@ -32,7 +32,7 @@ function PaginationBar({ page, totalPages, total, pageSize, label, onPage, activ
       return acc;
     }, []);
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-t border-gray-800/60">
+    <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60">
       <p className="text-xs text-gray-500">Showing <span className="text-gray-300 font-medium">{from}–{to}</span> of <span className="text-gray-300 font-medium">{total}</span> {label}</p>
       <div className="flex items-center gap-1">
         <button onClick={() => onPage(1)} disabled={page === 1} className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">«</button>
@@ -98,16 +98,16 @@ export default function StocksPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold text-white">Indian Stocks</h1><p className="text-gray-400 text-sm mt-1">NSE / BSE equity orders</p></div>
-        <div className="flex items-center gap-2">
+      <div className="page-header">
+        <div><h1 className="text-xl md:text-2xl font-bold text-white">Indian Stocks</h1><p className="text-gray-400 text-sm mt-1">NSE / BSE equity orders</p></div>
+        <div className="page-header-actions">
           <ImportButton endpoint="/api/import/stocks" accept=".xlsx,.xls" label="Import Transactions" hint="INDMoney / Grow Stocks Order History XLSX" />
           <ImportButton endpoint="/api/import/holdings/stocks" accept=".xlsx,.xls" label="Import Holdings" hint="INDMoney Stocks Holdings Statement XLSX" />
           <StockAddModal onAdded={fetchData} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard title="Net Invested" value={formatINR(netInvested)} subtitle="Bought minus sold" icon={TrendingUp} iconColor="text-emerald-400" iconBg="bg-emerald-500/10" />
         <StatCard title="Total Bought" value={formatINR(totalBought)} subtitle={`${rows.filter((t) => t.transaction_type === "BUY").length} buy orders`} icon={TrendingUp} iconColor="text-blue-400" iconBg="bg-blue-500/10" />
         <StatCard title="Total Sold" value={formatINR(totalSold)} subtitle={`${rows.filter((t) => t.transaction_type === "SELL").length} sell orders`} icon={TrendingDown} iconColor="text-red-400" iconBg="bg-red-500/10" />
@@ -119,7 +119,7 @@ export default function StocksPage() {
       {/* Current Holdings — paginated at 8 per page */}
       {holdings.length > 0 && (
         <div className="glass-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Current Holdings</h2></div>
+          <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Current Holdings</h2></div>
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead><tr><th>Stock</th><th>Symbol</th><th className="text-right">Qty</th><th className="text-right">Avg Price</th><th className="text-right">Invested</th></tr></thead>
@@ -142,7 +142,7 @@ export default function StocksPage() {
 
       {/* Order History — paginated at 20 per page */}
       <div className="glass-card overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Order History</h2></div>
+        <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60"><h2 className="text-base font-semibold text-white">Order History</h2></div>
         {rows.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3"><Plus className="w-6 h-6 text-emerald-400" /></div>
