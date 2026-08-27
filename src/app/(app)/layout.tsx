@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Sidebar from "@/components/Sidebar";
+import DefaultViewRedirector from "@/components/DefaultViewRedirector";
 import { Menu } from "lucide-react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -34,6 +35,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-gray-950 overflow-x-hidden">
+      {/* Redirect to default view on first load */}
+      <DefaultViewRedirector />
+
       {/* Sidebar — desktop: always visible, mobile: drawer */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -52,9 +56,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs">
-              FT
-            </div>
+            <img src="/logo.svg" alt="FundTracker" className="w-7 h-7 rounded-lg" />
             <span className="text-sm font-semibold text-white">FundTracker</span>
           </div>
         </header>

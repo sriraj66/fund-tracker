@@ -7,6 +7,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Settings as SettingsIcon, AlertTriangle } from "lucide-react";
 import ClearDataSection from "./ClearDataSection";
 import InstallPWA from "./InstallPWA";
+import DefaultViewSetting from "./DefaultViewSetting";
+import FontSizeSetting from "./FontSizeSetting";
 
 interface Counts {
   mf: number; mfHoldings: number;
@@ -75,6 +77,44 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-white">Settings</h1>
         <p className="text-gray-400 text-sm mt-1">Manage your account and data</p>
+      </div>
+
+      {/* Font Size */}
+      <div className="glass-card">
+        <div className="p-4 md:p-6 border-b border-gray-800/60">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-violet-500/10 border border-violet-500/30 flex items-center justify-center">
+              <span className="text-violet-400 font-bold text-lg">Aa</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Font Size</h2>
+              <p className="text-sm text-gray-400">Adjust text size across the app</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 md:p-6">
+          <FontSizeSetting />
+        </div>
+      </div>
+
+      {/* Default View */}
+      <div className="glass-card">
+        <div className="p-4 md:p-6 border-b border-gray-800/60">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center">
+              <svg className="w-6 h-6 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Default View</h2>
+              <p className="text-sm text-gray-400">Page to open when you launch the app</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 md:p-6">
+          <DefaultViewSetting />
+        </div>
       </div>
 
       <div className="glass-card border-2 border-red-500/20">

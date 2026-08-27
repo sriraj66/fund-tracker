@@ -90,7 +90,7 @@ export default function ExchangeRateSettings({ currentRate }: ExchangeRateSettin
                   step="0.01"
                   value={rate}
                   onChange={(e) => setRate(e.target.value)}
-                  className="input w-full"
+                  className="form-input"
                   placeholder="83.50"
                 />
                 <p className="text-xs text-gray-500 mt-1">

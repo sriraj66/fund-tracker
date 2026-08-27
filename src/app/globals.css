@@ -14,7 +14,13 @@
 
 html {
   overflow-x: hidden;
+  font-size: 16px; /* default */
 }
+
+/* Font scale classes applied to <html> */
+html.font-scale-sm { font-size: 13px; }
+html.font-scale-md { font-size: 16px; }
+html.font-scale-lg { font-size: 19px; }
 
 body {
   @apply bg-gray-950 text-gray-100 antialiased;

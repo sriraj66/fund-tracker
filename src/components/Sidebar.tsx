@@ -71,9 +71,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         {/* Logo + mobile close button */}
         <div className="flex items-center justify-between px-5 py-5 border-b border-gray-800/60">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
-              FT
-            </div>
+            <img src="/logo.svg" alt="FundTracker" className="w-8 h-8 rounded-lg shrink-0" />
             <div>
               <p className="text-sm font-semibold text-white">FundTracker</p>
               <p className="text-xs text-gray-500">Portfolio Manager</p>

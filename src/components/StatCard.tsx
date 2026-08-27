@@ -32,7 +32,7 @@ export default function StatCard({
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">
             {title}
           </p>
-          <p className="text-base sm:text-xl md:text-2xl font-bold text-white truncate leading-tight">{value}</p>
+          <p className="text-sm sm:text-base md:text-lg font-bold text-white truncate leading-tight">{value}</p>
           {subtitle && (
             <p className="text-xs text-gray-500 mt-1 leading-tight">{subtitle}</p>
           )}

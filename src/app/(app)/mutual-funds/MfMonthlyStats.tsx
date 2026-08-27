@@ -164,9 +164,9 @@ export default function MfMonthlyStats({ transactions, onDeleted }: Props) {
     <div className="space-y-6">
       {/* Bar Chart */}
       <div className="glass-card p-4 md:p-6">
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
           <h2 className="text-base font-semibold text-white">Monthly Investment Activity</h2>
-          <div className="flex items-center gap-1 bg-gray-800/60 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-gray-800/60 rounded-lg p-1 self-start sm:self-auto">
             {TIME_FRAMES.map((tf) => (
               <button
                 key={tf.label}

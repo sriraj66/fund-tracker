@@ -432,25 +432,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Row 5: Quick navigation ── */}
-      <div className="glass-card p-5">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Quick Access</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-          {[
-            {href:"/mutual-funds",  label:"Mutual Funds",  color:"bg-violet-500/10 text-violet-400",  icon:"📊"},
-            {href:"/stocks",        label:"Indian Stocks", color:"bg-emerald-500/10 text-emerald-400", icon:"📈"},
-            {href:"/us-stocks",     label:"US Stocks",     color:"bg-blue-500/10 text-blue-400",       icon:"🌐"},
-            {href:"/crypto",        label:"Crypto",        color:"bg-orange-500/10 text-orange-400",   icon:"₿"},
-            {href:"/gold",          label:"Gold",          color:"bg-yellow-500/10 text-yellow-400",   icon:"🥇"},
-            {href:"/expenses",      label:"Expenses",      color:"bg-rose-500/10 text-rose-400",       icon:"💳"},
-          ].map(l => (
-            <Link key={l.href} href={l.href} className={`flex flex-col items-center gap-1.5 p-3 rounded-xl ${l.color} hover:opacity-80 transition-opacity text-center`}>
-              <span className="text-lg">{l.icon}</span>
-              <span className="text-xs font-medium">{l.label}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
