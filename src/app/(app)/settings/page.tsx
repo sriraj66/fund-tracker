@@ -8,11 +8,21 @@ import { Settings as SettingsIcon, AlertTriangle } from "lucide-react";
 import ClearDataSection from "./ClearDataSection";
 import InstallPWA from "./InstallPWA";
 
-interface Counts { mf: number; stocks: number; usStocks: number; crypto: number; gold: number; snapshots: number; }
+interface Counts {
+  mf: number; mfHoldings: number;
+  stocks: number; stockHoldings: number;
+  usStocks: number; usHoldings: number;
+  crypto: number; cryptoHoldings: number;
+  gold: number; goldHoldings: number;
+  expenses: number;
+  snapshots: number;
+}
+
+const ZERO: Counts = { mf: 0, mfHoldings: 0, stocks: 0, stockHoldings: 0, usStocks: 0, usHoldings: 0, crypto: 0, cryptoHoldings: 0, gold: 0, goldHoldings: 0, expenses: 0, snapshots: 0 };
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const [counts, setCounts] = useState<Counts>({ mf: 0, stocks: 0, usStocks: 0, crypto: 0, gold: 0, snapshots: 0 });
+  const [counts, setCounts] = useState<Counts>(ZERO);
   const [loading, setLoading] = useState(true);
 
   const fetchCounts = async () => {
@@ -20,21 +30,43 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       const uid = user.uid;
-      const [mf, stocks, us, crypto, gold, snap] = await Promise.all([
-        getDocs(collection(db, "users", uid, "mf_transactions")),
-        getDocs(collection(db, "users", uid, "stock_transactions")),
-        getDocs(collection(db, "users", uid, "us_stock_transactions")),
-        getDocs(collection(db, "users", uid, "crypto_transactions")),
-        getDocs(collection(db, "users", uid, "gold_transactions")),
-        getDocs(collection(db, "users", uid, "portfolio_snapshots")),
+      const safe = (col: string) =>
+        getDocs(collection(db, "users", uid, col)).catch(() => ({ size: 0 }));
+
+      const [
+        mf, mfH, stocks, stockH, us, usH,
+        crypto, cryptoH, gold, goldH, expenses, snap,
+      ] = await Promise.all([
+        safe("mf_transactions"),   safe("mf_holdings"),
+        safe("stock_transactions"), safe("stock_holdings"),
+        safe("us_stock_transactions"), safe("us_stock_holdings"),
+        safe("crypto_transactions"), safe("crypto_holdings"),
+        safe("gold_transactions"),  safe("gold_holdings"),
+        safe("expenses"),
+        safe("portfolio_snapshots"),
       ]);
-      setCounts({ mf: mf.size, stocks: stocks.size, usStocks: us.size, crypto: crypto.size, gold: gold.size, snapshots: snap.size });
+
+      setCounts({
+        mf: mf.size,         mfHoldings: mfH.size,
+        stocks: stocks.size,  stockHoldings: stockH.size,
+        usStocks: us.size,    usHoldings: usH.size,
+        crypto: crypto.size,  cryptoHoldings: cryptoH.size,
+        gold: gold.size,      goldHoldings: goldH.size,
+        expenses: expenses.size,
+        snapshots: snap.size,
+      });
     } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchCounts(); }, [user]);
 
-  const totalCount = Object.values(counts).reduce((s, c) => s + c, 0);
+  const totalCount =
+    counts.mf + counts.mfHoldings +
+    counts.stocks + counts.stockHoldings +
+    counts.usStocks + counts.usHoldings +
+    counts.crypto + counts.cryptoHoldings +
+    counts.gold + counts.goldHoldings +
+    counts.expenses + counts.snapshots;
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" /></div>;
 

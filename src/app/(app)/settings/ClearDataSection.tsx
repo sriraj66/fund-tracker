@@ -5,7 +5,15 @@ import { Trash2, Loader2, AlertCircle } from "lucide-react";
 import { auth } from "@/lib/firebase/config";
 
 interface ClearDataSectionProps {
-  counts: { mf: number; stocks: number; usStocks: number; crypto: number; gold: number; snapshots: number };
+  counts: {
+    mf: number; mfHoldings: number;
+    stocks: number; stockHoldings: number;
+    usStocks: number; usHoldings: number;
+    crypto: number; cryptoHoldings: number;
+    gold: number; goldHoldings: number;
+    expenses: number;
+    snapshots: number;
+  };
   totalCount: number;
   onCleared?: () => void;
 }
@@ -43,12 +51,13 @@ export default function ClearDataSection({ counts, totalCount, onCleared }: Clea
   };
 
   const fundTypes = [
-    { type: "mf", name: "Mutual Funds", count: counts.mf, colorClass: "border-violet-500/20 hover:border-violet-500/40" },
-    { type: "stocks", name: "Indian Stocks", count: counts.stocks, colorClass: "border-emerald-500/20 hover:border-emerald-500/40" },
-    { type: "us-stocks", name: "US Stocks", count: counts.usStocks, colorClass: "border-blue-500/20 hover:border-blue-500/40" },
-    { type: "crypto", name: "Crypto", count: counts.crypto, colorClass: "border-orange-500/20 hover:border-orange-500/40" },
-    { type: "gold", name: "Gold", count: counts.gold, colorClass: "border-yellow-500/20 hover:border-yellow-500/40" },
-    { type: "snapshots", name: "Portfolio Snapshots", count: counts.snapshots, colorClass: "border-purple-500/20 hover:border-purple-500/40" },
+    { type: "mf",        name: "Mutual Funds",         tx: counts.mf,      holdings: counts.mfHoldings,    colorClass: "border-violet-500/20 hover:border-violet-500/40" },
+    { type: "stocks",    name: "Indian Stocks",         tx: counts.stocks,  holdings: counts.stockHoldings, colorClass: "border-emerald-500/20 hover:border-emerald-500/40" },
+    { type: "us-stocks", name: "US Stocks",             tx: counts.usStocks, holdings: counts.usHoldings,  colorClass: "border-blue-500/20 hover:border-blue-500/40" },
+    { type: "crypto",    name: "Crypto",                tx: counts.crypto,  holdings: counts.cryptoHoldings, colorClass: "border-orange-500/20 hover:border-orange-500/40" },
+    { type: "gold",      name: "Gold",                  tx: counts.gold,    holdings: counts.goldHoldings,  colorClass: "border-yellow-500/20 hover:border-yellow-500/40" },
+    { type: "expenses",  name: "Expenses",              tx: counts.expenses, holdings: 0,                  colorClass: "border-rose-500/20 hover:border-rose-500/40" },
+    { type: "snapshots", name: "Portfolio Snapshots",   tx: counts.snapshots, holdings: 0,                 colorClass: "border-purple-500/20 hover:border-purple-500/40" },
   ];
 
   return (
@@ -59,16 +68,29 @@ export default function ClearDataSection({ counts, totalCount, onCleared }: Clea
       <div>
         <h3 className="text-lg font-semibold text-white mb-4">Clear Data by Type</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {fundTypes.map((fund) => (
-            <div key={fund.type} className={`p-4 bg-gray-800/40 border rounded-lg transition-all ${fund.colorClass}`}>
-              <div className="flex items-center justify-between">
-                <div><h4 className="font-semibold text-white">{fund.name}</h4><p className="text-sm text-gray-400">{fund.count} record{fund.count !== 1 ? "s" : ""}</p></div>
-                <button onClick={() => handleClear(fund.type, fund.name)} disabled={loading !== null || fund.count === 0} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2">
-                  {loading === fund.type ? <><Loader2 className="w-4 h-4 animate-spin" />Clearing...</> : <><Trash2 className="w-4 h-4" />Clear</>}
-                </button>
+          {fundTypes.map((fund) => {
+            const total = fund.tx + fund.holdings;
+            return (
+              <div key={fund.type} className={`p-4 bg-gray-800/40 border rounded-lg transition-all ${fund.colorClass}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-white">{fund.name}</h4>
+                    <p className="text-sm text-gray-400">
+                      {fund.tx} transaction{fund.tx !== 1 ? "s" : ""}
+                      {fund.holdings > 0 && <span className="text-gray-500"> + {fund.holdings} holding{fund.holdings !== 1 ? "s" : ""}</span>}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleClear(fund.type, fund.name)}
+                    disabled={loading !== null || total === 0}
+                    className="shrink-0 px-3 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-400 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                  >
+                    {loading === fund.type ? <><Loader2 className="w-4 h-4 animate-spin" />Clearing...</> : <><Trash2 className="w-4 h-4" />Clear</>}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
