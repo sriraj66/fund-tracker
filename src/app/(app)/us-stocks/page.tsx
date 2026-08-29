@@ -109,8 +109,8 @@ export default function UsStocksPage() {
           </div>
         </div>
         <div className="page-header-actions">
-          <ImportButton endpoint="/api/import/us-stocks" accept=".pdf" label="Import Transactions" hint="INDMoney Monthly Statement PDF (Alpaca)" />
-          <ImportButton endpoint="/api/import/holdings/us-stocks" accept=".xls,.xlsx" label="Import Holdings" hint="INDMoney US Stocks Holdings Report XLS" />
+          <ImportButton endpoint="/api/import/us-stocks" accept=".pdf" label="Import Transactions" hint="INDMoney Monthly Statement PDF (Alpaca)" onSuccess={fetchData} />
+          <ImportButton endpoint="/api/import/holdings/us-stocks" accept=".xls,.xlsx" label="Import Holdings" hint="INDMoney US Stocks Holdings Report XLS" onSuccess={fetchData} />
           <UsStockAddModal onAdded={fetchData} />
         </div>
       </div>

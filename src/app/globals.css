@@ -165,6 +165,14 @@ body {
   @apply hidden md:table-cell;
 }
 
+/* ── Date / datetime inputs: never overflow their container ── */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  max-width: 100%;
+  min-width: 0;
+}
+
 /* ── Hide scrollbar while keeping scrollability ── */
 .no-scrollbar {
   -ms-overflow-style: none;

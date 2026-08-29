@@ -7,14 +7,16 @@ import { useAuth } from "@/context/AuthContext";
 import { Plus, X, Loader2, Tag } from "lucide-react";
 import { getCategoryColor, getCategoryIcon, type CategoryDoc } from "./CategoryManageModal";
 import { type TagDoc, getTagColor } from "./TagManageModal";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 interface Props {
   onAdded?: () => void;
+  fab?: boolean;
 }
 
 const PAYMENT_METHODS = ["UPI", "Card", "Cash", "Net Banking", "Other"] as const;
 
-export default function ExpenseAddModal({ onAdded }: Props) {
+export default function ExpenseAddModal({ onAdded, fab }: Props) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,6 +34,8 @@ export default function ExpenseAddModal({ onAdded }: Props) {
     payment_method: "UPI",
     notes: "",
   });
+
+  useScrollLock(open);
 
   const toggleTag = (name: string) => {
     setSelectedTags((prev) =>
@@ -118,10 +122,20 @@ export default function ExpenseAddModal({ onAdded }: Props) {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="btn-primary">
-        <Plus className="w-4 h-4" />
-        Add Expense
-      </button>
+      {fab ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-semibold rounded-full px-5 py-3 shadow-lg shadow-rose-900/40 transition-colors"
+        >
+          <Plus className="w-5 h-5" />
+          Add Expense
+        </button>
+      ) : (
+        <button onClick={() => setOpen(true)} className="btn-primary">
+          <Plus className="w-4 h-4" />
+          Add Expense
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
@@ -156,6 +170,7 @@ export default function ExpenseAddModal({ onAdded }: Props) {
                   <label className="form-label">Amount (₹) *</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     name="amount"
                     className="form-input text-lg font-semibold"
                     placeholder="0.00"
@@ -215,7 +230,7 @@ export default function ExpenseAddModal({ onAdded }: Props) {
                     <input
                       type="date"
                       name="date"
-                      className="form-input"
+                      className="form-input min-w-0"
                       value={form.date}
                       onChange={handleChange}
                       required
@@ -298,7 +313,7 @@ export default function ExpenseAddModal({ onAdded }: Props) {
                   </div>
                 )}
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-3 pt-2 pb-4">
                   <button type="button" onClick={() => setOpen(false)} className="btn-secondary flex-1 justify-center">
                     Cancel
                   </button>

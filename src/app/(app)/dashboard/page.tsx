@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { formatINR, formatUSD } from "@/lib/utils";
 import Link from "next/link";
+import ExpenseAddModal from "@/app/(app)/expenses/ExpenseAddModal";
 
 const CHART_COLORS = ["#8b5cf6","#10b981","#3b82f6","#f97316","#eab308","#f43f5e","#06b6d4","#a855f7"];
 
@@ -51,6 +52,9 @@ export default function DashboardPage() {
   const [expenseCount, setExpenseCount] = useState<number>(0);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refetch = () => setRefreshKey((k) => k + 1);
 
   useEffect(() => {
     if (!user) return;
@@ -120,7 +124,8 @@ export default function DashboardPage() {
       }
     }
     fetchAll();
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, refreshKey]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -202,7 +207,8 @@ export default function DashboardPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-white">Financial Dashboard</h1>
-          <p className="text-gray-400 text-sm mt-1">Welcome back, {user?.displayName || user?.email?.split("@")[0]} — {monthName}</p>
+          <p className="text-gray-400 text-sm mt-0.5">Welcome back, {user?.displayName || user?.email?.split("@")[0]}</p>
+          <p className="text-gray-500 text-xs mt-0.5">{monthName}</p>
         </div>
         <Link href="/expenses/dashboard" className="shrink-0 btn-secondary text-xs py-1.5 px-3">
           Expense Analytics ↗
@@ -432,6 +438,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Mobile FAB — Quick Add Expense */}
+      <div className="sm:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+        <ExpenseAddModal fab onAdded={refetch} />
+      </div>
     </div>
   );
 }

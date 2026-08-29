@@ -173,8 +173,8 @@ export default function CryptoPage() {
       <div className="page-header">
         <div><h1 className="text-xl md:text-2xl font-bold text-white">Crypto</h1><p className="text-gray-400 text-sm mt-1">CoinSwitch spot trades (INR)</p></div>
         <div className="page-header-actions">
-          <ImportButton endpoint="/api/import/crypto" accept=".xlsx,.xls" label="Import Transactions" hint="CoinSwitch Transaction Statement XLSX" />
-          <ImportButton endpoint="/api/import/holdings/crypto" accept=".xlsx,.xls" label="Import Holdings" hint="CoinSwitch Trade Report (Balances VDA)" />
+          <ImportButton endpoint="/api/import/crypto" accept=".xlsx,.xls" label="Import Transactions" hint="CoinSwitch Transaction Statement XLSX" onSuccess={fetchData} />
+          <ImportButton endpoint="/api/import/holdings/crypto" accept=".xlsx,.xls" label="Import Holdings" hint="CoinSwitch Trade Report (Balances VDA)" onSuccess={fetchData} />
           <CryptoAddHoldingModal onAdded={fetchData} />
           <CryptoAddModal onAdded={fetchData} />
         </div>

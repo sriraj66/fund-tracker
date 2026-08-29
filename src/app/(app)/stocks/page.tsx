@@ -104,8 +104,8 @@ export default function StocksPage() {
       <div className="page-header">
         <div><h1 className="text-xl md:text-2xl font-bold text-white">Indian Stocks</h1><p className="text-gray-400 text-sm mt-1">NSE / BSE equity orders</p></div>
         <div className="page-header-actions">
-          <ImportButton endpoint="/api/import/stocks" accept=".xlsx,.xls" label="Import Transactions" hint="INDMoney / Grow Stocks Order History XLSX" />
-          <ImportButton endpoint="/api/import/holdings/stocks" accept=".xlsx,.xls" label="Import Holdings" hint="INDMoney Stocks Holdings Statement XLSX" />
+          <ImportButton endpoint="/api/import/stocks" accept=".xlsx,.xls" label="Import Transactions" hint="INDMoney / Grow Stocks Order History XLSX" onSuccess={fetchData} />
+          <ImportButton endpoint="/api/import/holdings/stocks" accept=".xlsx,.xls" label="Import Holdings" hint="INDMoney Stocks Holdings Statement XLSX" onSuccess={fetchData} />
           <StockAddModal onAdded={fetchData} />
         </div>
       </div>

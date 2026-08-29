@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { Upload, X, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase/config";
@@ -11,6 +11,7 @@ interface ImportButtonProps {
   accept: string;
   label?: string;
   hint?: string;
+  onSuccess?: () => void;
 }
 
 type State =
@@ -19,13 +20,14 @@ type State =
   | { status: "success"; message: string; imported: number }
   | { status: "error"; message: string };
 
-export default function ImportButton({ endpoint, accept, label = "Import Statement", hint }: ImportButtonProps) {
-  const router = useRouter();
+export default function ImportButton({ endpoint, accept, label = "Import Statement", hint, onSuccess }: ImportButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ status: "idle" });
   const [open, setOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  useScrollLock(open);
 
   const handleFile = (file: File) => { setSelectedFile(file); setState({ status: "idle" }); };
   const handleDrop = (e: React.DragEvent) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); };
@@ -52,7 +54,7 @@ export default function ImportButton({ endpoint, accept, label = "Import Stateme
         setState({ status: "error", message: data.error ?? "Unknown error" });
       } else {
         setState({ status: "success", message: data.message, imported: data.imported ?? data.count ?? 0 });
-        router.refresh();
+        onSuccess?.();
         setTimeout(() => { setOpen(false); setSelectedFile(null); setState({ status: "idle" }); }, 2500);
       }
     } catch {
@@ -70,9 +72,12 @@ export default function ImportButton({ endpoint, accept, label = "Import Stateme
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
-          <div className="relative glass-card w-full max-w-md p-6 shadow-2xl">
+          <div className="relative w-full sm:max-w-md bg-gray-900/95 backdrop-blur-sm border border-gray-800/60 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 shadow-2xl max-h-[88vh] overflow-y-auto overscroll-contain">
+            <div className="sm:hidden flex justify-center mb-3 -mt-1">
+              <div className="w-10 h-1 rounded-full bg-gray-700" />
+            </div>
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h2 className="text-base font-semibold text-white">{label}</h2>
@@ -130,7 +135,7 @@ export default function ImportButton({ endpoint, accept, label = "Import Stateme
               </div>
             )}
 
-            <div className="flex gap-3 mt-5">
+            <div className="flex gap-3 mt-5 pb-4">
               <button onClick={handleClose} className="btn-secondary flex-1 justify-center">Cancel</button>
               <button
                 onClick={handleUpload}

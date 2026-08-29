@@ -83,7 +83,7 @@ export default function PortfolioTrackerPage() {
       <div className="page-header">
         <div><h1 className="text-xl md:text-2xl font-bold text-white">Portfolio Tracker</h1><p className="text-gray-400 text-sm mt-1">Historical portfolio performance snapshots</p></div>
         <div className="page-header-actions">
-          <ImportButton endpoint="/api/import/portfolio-snapshots" accept=".xlsx,.xls,.csv" label="Import Snapshots" hint="Upload your portfolio tracking sheet" />
+          <ImportButton endpoint="/api/import/portfolio-snapshots" accept=".xlsx,.xls,.csv" label="Import Snapshots" hint="Upload your portfolio tracking sheet" onSuccess={fetchData} />
           <SnapshotAddModal onAdded={fetchData} />
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +16,8 @@ export default function StockAddModal({ onAdded }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useScrollLock(open);
 
   const [form, setForm] = useState({
     stock_name: "",
@@ -74,12 +77,15 @@ export default function StockAddModal({ onAdded }: Props) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <div className="relative glass-card w-full max-w-lg p-4 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative w-full sm:max-w-lg bg-gray-900/95 backdrop-blur-sm border border-gray-800/60 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 shadow-2xl max-h-[88vh] overflow-y-auto overscroll-contain">
+            <div className="sm:hidden flex justify-center mb-3 -mt-1">
+              <div className="w-10 h-1 rounded-full bg-gray-700" />
+            </div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-white">Add Stock Order</h2>
               <button
@@ -148,6 +154,7 @@ export default function StockAddModal({ onAdded }: Props) {
                   <label className="form-label">Quantity *</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     name="quantity"
                     className="form-input"
                     placeholder="1"
@@ -162,6 +169,7 @@ export default function StockAddModal({ onAdded }: Props) {
                   <label className="form-label">Total Value (₹) *</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     name="value"
                     className="form-input"
                     placeholder="802.00"
@@ -180,7 +188,7 @@ export default function StockAddModal({ onAdded }: Props) {
                   <input
                     type="datetime-local"
                     name="execution_date"
-                    className="form-input"
+                    className="form-input min-w-0"
                     value={form.execution_date}
                     onChange={handleChange}
                   />
@@ -215,7 +223,7 @@ export default function StockAddModal({ onAdded }: Props) {
                 </div>
               )}
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-2 pb-4">
                 <button
                   type="button"
                   onClick={() => setOpen(false)}

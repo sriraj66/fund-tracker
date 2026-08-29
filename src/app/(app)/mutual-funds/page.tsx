@@ -118,8 +118,8 @@ export default function MutualFundsPage() {
       <div className="page-header">
         <div><h1 className="text-xl md:text-2xl font-bold text-white">Mutual Funds</h1><p className="text-gray-400 text-sm mt-1">Track your MF investments</p></div>
         <div className="page-header-actions">
-          <ImportButton endpoint="/api/import/mf" accept=".xlsx,.xls" label="Import Transactions" hint="INDMoney Mutual Funds Order History XLSX" />
-          <ImportButton endpoint="/api/import/holdings/mf" accept=".xlsx,.xls" label="Import Holdings" hint="INDMoney Mutual Funds Holdings Statement XLSX" />
+          <ImportButton endpoint="/api/import/mf" accept=".xlsx,.xls" label="Import Transactions" hint="INDMoney Mutual Funds Order History XLSX" onSuccess={fetchData} />
+          <ImportButton endpoint="/api/import/holdings/mf" accept=".xlsx,.xls" label="Import Holdings" hint="INDMoney Mutual Funds Holdings Statement XLSX" onSuccess={fetchData} />
           <MfAddModal onAdded={fetchData} />
         </div>
       </div>
