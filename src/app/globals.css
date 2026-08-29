@@ -14,13 +14,21 @@
 
 html {
   overflow-x: hidden;
-  font-size: 16px; /* default */
+  font-size: 16px; /* default desktop */
 }
 
 /* Font scale classes applied to <html> */
 html.font-scale-sm { font-size: 13px; }
 html.font-scale-md { font-size: 16px; }
 html.font-scale-lg { font-size: 19px; }
+
+/* Mobile font sizes — smaller defaults for compact screens */
+@media (max-width: 639px) {
+  html               { font-size: 14px; }
+  html.font-scale-sm { font-size: 12px; }
+  html.font-scale-md { font-size: 14px; }
+  html.font-scale-lg { font-size: 18px; }
+}
 
 body {
   @apply bg-gray-950 text-gray-100 antialiased;
