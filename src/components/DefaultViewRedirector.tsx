@@ -18,6 +18,13 @@ export default function DefaultViewRedirector() {
     // Only redirect when landing on /dashboard (the default initial route)
     if (pathname !== "/dashboard") return;
 
+    // If the user explicitly navigated to /dashboard (e.g. clicked the sidebar link),
+    // skip the redirect so they can actually see the financial dashboard.
+    if (sessionStorage.getItem("ft_dashboard_explicit")) {
+      sessionStorage.removeItem("ft_dashboard_explicit");
+      return;
+    }
+
     const redirect = (target: string) => {
       if (target && target !== "/dashboard") {
         router.replace(target);

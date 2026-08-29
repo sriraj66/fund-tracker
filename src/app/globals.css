@@ -138,3 +138,12 @@ body {
 .col-tablet-hidden {
   @apply hidden md:table-cell;
 }
+
+/* ── Hide scrollbar while keeping scrollability ── */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

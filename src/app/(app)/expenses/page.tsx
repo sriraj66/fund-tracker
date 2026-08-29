@@ -53,29 +53,30 @@ function PaginationBar({
       return acc;
     }, []);
   return (
-    <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60">
-      <p className="text-xs text-gray-500">
+    <div className="px-4 py-3 md:px-6 border-t border-gray-800/60 flex flex-col sm:flex-row items-center gap-2 sm:justify-between">
+      <p className="text-xs text-gray-500 order-2 sm:order-1">
         Showing <span className="text-gray-300 font-medium">{from}–{to}</span> of{" "}
         <span className="text-gray-300 font-medium">{total}</span> {label}
       </p>
-      <div className="flex items-center gap-1">
-        <button onClick={() => onPage(1)} disabled={page === 1} className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">«</button>
-        <button onClick={() => onPage(page - 1)} disabled={page === 1} className="px-3 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹ Prev</button>
+      <div className="flex items-center gap-1 flex-wrap justify-center order-1 sm:order-2">
+        <button onClick={() => onPage(1)} disabled={page === 1} className="px-2 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">«</button>
+        <button onClick={() => onPage(page - 1)} disabled={page === 1} className="px-3 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹ Prev</button>
         {pageNums.map((item, idx) =>
           item === "..." ? (
-            <span key={`e${idx}`} className="px-2 py-1 text-xs text-gray-600">…</span>
+            <span key={`e${idx}`} className="hidden sm:inline px-2 py-1 text-xs text-gray-600">…</span>
           ) : (
             <button
               key={item}
               onClick={() => onPage(item as number)}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${page === item ? "bg-rose-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
+              className={`hidden sm:inline-flex px-3 py-1.5 rounded text-xs font-medium transition-colors ${page === item ? "bg-rose-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}
             >
               {item}
             </button>
           )
         )}
-        <button onClick={() => onPage(page + 1)} disabled={page === totalPages} className="px-3 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Next ›</button>
-        <button onClick={() => onPage(totalPages)} disabled={page === totalPages} className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">»</button>
+        <span className="sm:hidden text-xs text-gray-500 px-2">{page} / {totalPages}</span>
+        <button onClick={() => onPage(page + 1)} disabled={page === totalPages} className="px-3 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Next ›</button>
+        <button onClick={() => onPage(totalPages)} disabled={page === totalPages} className="px-2 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">»</button>
       </div>
     </div>
   );
@@ -218,7 +219,7 @@ export default function ExpensesPage() {
   const monthName = now.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 pb-6 sm:space-y-8">
       {/* Header */}
       <div className="page-header">
         <div>
@@ -337,11 +338,11 @@ export default function ExpensesPage() {
           </div>
           {/* Category filter */}
           {uniqueCategories.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs text-gray-600 mr-1">Category:</span>
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+              <span className="text-xs text-gray-600 whitespace-nowrap flex-shrink-0">Category:</span>
               <button
                 onClick={() => { setFilterCategory("all"); setTxPage(1); }}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${filterCategory === "all" ? "bg-rose-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}
+                className={`whitespace-nowrap flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filterCategory === "all" ? "bg-rose-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}
               >
                 All
               </button>
@@ -353,7 +354,7 @@ export default function ExpensesPage() {
                   <button
                     key={cat.id}
                     onClick={() => { setFilterCategory(cat.id); setTxPage(1); }}
-                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                    className={`whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       isActive ? `${color.bg} ${color.text}` : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
                     }`}
                   >
@@ -366,11 +367,11 @@ export default function ExpensesPage() {
           )}
           {/* Tag filter */}
           {uniqueTags.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs text-gray-600 mr-1">Tag:</span>
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+              <span className="text-xs text-gray-600 whitespace-nowrap flex-shrink-0">Tag:</span>
               <button
                 onClick={() => { setFilterTag("all"); setTxPage(1); }}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filterTag === "all" ? "bg-sky-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}
+                className={`whitespace-nowrap flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${filterTag === "all" ? "bg-sky-600 text-white" : "bg-gray-800 text-gray-400 hover:text-white"}`}
               >
                 All
               </button>
@@ -381,7 +382,7 @@ export default function ExpensesPage() {
                   <button
                     key={tag}
                     onClick={() => { setFilterTag(tag); setTxPage(1); }}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                    className={`whitespace-nowrap flex-shrink-0 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${
                       isActive ? `${tc.bg} ${tc.text} ring-1 ring-current/40` : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
                     }`}
                   >
@@ -407,7 +408,51 @@ export default function ExpensesPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/* Mobile card list */}
+            <div className="sm:hidden divide-y divide-gray-800/50">
+              {paginatedRows.map((e) => {
+                const CatIcon = getCategoryIcon(e.category_icon);
+                const color = getCategoryColor(e.category_color);
+                return (
+                  <div key={e.id} className="px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <span className={`mt-0.5 flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${color.bg}`}>
+                        <CatIcon className={`w-4 h-4 ${color.text}`} />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium text-gray-200 leading-snug">{e.description}</p>
+                          <span className="text-sm font-bold text-rose-400 flex-shrink-0 ml-1">{formatINR(Number(e.amount))}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-1.5 mt-0.5">
+                          <span className={`text-xs font-medium ${color.text}`}>{e.category_name}</span>
+                          <span className="text-gray-700 text-xs">·</span>
+                          <span className="text-gray-500 text-xs">{e.payment_method}</span>
+                          <span className="text-gray-700 text-xs">·</span>
+                          <span className="text-gray-500 text-xs">{formatDate(e.date)}</span>
+                        </div>
+                        {e.tags && e.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {e.tags.map((tag) => {
+                              const tc = getTagColor(tagColorMap[tag] ?? "gray");
+                              return (
+                                <span key={tag} className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${tc.bg} ${tc.text}`}>
+                                  {tag}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <ExpenseDeleteButton id={e.id} onDeleted={fetchData} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -464,6 +509,7 @@ export default function ExpensesPage() {
                 </tbody>
               </table>
             </div>
+
             <PaginationBar
               page={txPage}
               totalPages={txTotalPages}

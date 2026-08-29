@@ -97,7 +97,13 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={handleNavClick}
+                onClick={() => {
+                  if (item.href === "/dashboard") {
+                    // Mark as explicit navigation so DefaultViewRedirector skips the redirect
+                    sessionStorage.setItem("ft_dashboard_explicit", "1");
+                  }
+                  handleNavClick();
+                }}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group",
                   isActive
