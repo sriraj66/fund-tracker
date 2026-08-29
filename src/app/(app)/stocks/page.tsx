@@ -32,19 +32,22 @@ function PaginationBar({ page, totalPages, total, pageSize, label, onPage, activ
       return acc;
     }, []);
   return (
-    <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60">
-      <p className="text-xs text-gray-500">Showing <span className="text-gray-300 font-medium">{from}–{to}</span> of <span className="text-gray-300 font-medium">{total}</span> {label}</p>
-      <div className="flex items-center gap-1">
-        <button onClick={() => onPage(1)} disabled={page === 1} className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">«</button>
-        <button onClick={() => onPage(page - 1)} disabled={page === 1} className="px-3 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹ Prev</button>
+    <div className="px-4 py-3 md:px-6 border-t border-gray-800/60 flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+      <div className="flex items-center gap-1 flex-wrap justify-center order-1 sm:order-2">
+        <button onClick={() => onPage(1)} disabled={page === 1} className="px-2 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">«</button>
+        <button onClick={() => onPage(page - 1)} disabled={page === 1} className="px-3 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹ Prev</button>
         {pageNums.map((item, idx) => item === "..." ? (
-          <span key={`e${idx}`} className="px-2 py-1 text-xs text-gray-600">…</span>
+          <span key={`e${idx}`} className="hidden sm:inline px-2 py-1 text-xs text-gray-600">…</span>
         ) : (
-          <button key={item} onClick={() => onPage(item as number)} className={`px-3 py-1 rounded text-xs font-medium transition-colors ${page === item ? `${activeColor} text-white` : "text-gray-400 hover:text-white hover:bg-gray-800"}`}>{item}</button>
+          <button key={item} onClick={() => onPage(item as number)} className={`hidden sm:inline-flex px-3 py-1.5 rounded text-xs font-medium transition-colors ${page === item ? `${activeColor} text-white` : "text-gray-400 hover:text-white hover:bg-gray-800"}`}>{item}</button>
         ))}
-        <button onClick={() => onPage(page + 1)} disabled={page === totalPages} className="px-3 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Next ›</button>
-        <button onClick={() => onPage(totalPages)} disabled={page === totalPages} className="px-2 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">»</button>
+        <span className="sm:hidden text-xs text-gray-500 px-2">{page} / {totalPages}</span>
+        <button onClick={() => onPage(page + 1)} disabled={page === totalPages} className="px-3 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Next ›</button>
+        <button onClick={() => onPage(totalPages)} disabled={page === totalPages} className="px-2 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">»</button>
       </div>
+      <p className="text-xs text-gray-500 order-2 sm:order-1 text-center sm:text-left">
+        Showing <span className="text-gray-300 font-medium">{from}–{to}</span> of <span className="text-gray-300 font-medium">{total}</span> {label}
+      </p>
     </div>
   );
 }

@@ -300,34 +300,19 @@ export default function GoldMonthlyStats({ transactions, onDeleted }: Props) {
 
                       {/* Per-month transaction pagination */}
                       {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-4 py-2.5 md:px-6 border-t border-gray-800/40 bg-gray-900/60">
-                          <p className="text-xs text-gray-500">
-                            <span className="text-gray-300 font-medium">
-                              {(currentPage - 1) * TX_PER_PAGE + 1}–{Math.min(currentPage * TX_PER_PAGE, sorted.length)}
-                            </span>{" "}of{" "}
+                        <div className="px-4 py-2.5 md:px-6 border-t border-gray-800/40 bg-gray-900/60 flex flex-col items-center gap-1.5 sm:flex-row sm:justify-between">
+                          <div className="flex items-center gap-1 justify-center order-1 sm:order-2">
+                            <button onClick={() => setTxPage(month.key, currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹ Prev</button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                              <button key={p} onClick={() => setTxPage(month.key, p)} className={`hidden sm:inline-flex px-3 py-1.5 rounded text-xs font-medium transition-colors ${currentPage === p ? "bg-yellow-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"}`}>{p}</button>
+                            ))}
+                            <span className="sm:hidden text-xs text-gray-500 px-1">{currentPage} / {totalPages}</span>
+                            <button onClick={() => setTxPage(month.key, currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Next ›</button>
+                          </div>
+                          <p className="text-xs text-gray-500 order-2 sm:order-1 text-center sm:text-left">
+                            <span className="text-gray-300 font-medium">{(currentPage - 1) * TX_PER_PAGE + 1}–{Math.min(currentPage * TX_PER_PAGE, sorted.length)}</span>{" "}of{" "}
                             <span className="text-gray-300 font-medium">{sorted.length}</span>
                           </p>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => setTxPage(month.key, currentPage - 1)}
-                              disabled={currentPage === 1}
-                              className="px-3 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >‹ Prev</button>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                              <button
-                                key={p}
-                                onClick={() => setTxPage(month.key, p)}
-                                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                                  currentPage === p ? "bg-yellow-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"
-                                }`}
-                              >{p}</button>
-                            ))}
-                            <button
-                              onClick={() => setTxPage(month.key, currentPage + 1)}
-                              disabled={currentPage === totalPages}
-                              className="px-3 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >Next ›</button>
-                          </div>
                         </div>
                       )}
                     </div>
@@ -339,27 +324,17 @@ export default function GoldMonthlyStats({ transactions, onDeleted }: Props) {
 
           {/* Accordion pagination */}
           {accordionTotalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 md:px-6 border-t border-gray-800/60 bg-gray-900/30">
-              <p className="text-xs text-gray-500">
+            <div className="px-4 py-3 md:px-6 border-t border-gray-800/60 bg-gray-900/30 flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+              <div className="flex items-center gap-2 order-1 sm:order-2">
+                <button onClick={() => { setAccordionPage((p) => Math.max(1, p - 1)); setExpandedMonth(null); }} disabled={accordionPage === 1} className="px-3 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹ Prev</button>
+                <span className="text-xs text-gray-500">{accordionPage} / {accordionTotalPages}</span>
+                <button onClick={() => { setAccordionPage((p) => Math.min(accordionTotalPages, p + 1)); setExpandedMonth(null); }} disabled={accordionPage === accordionTotalPages} className="px-3 py-1.5 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Next ›</button>
+              </div>
+              <p className="text-xs text-gray-500 order-2 sm:order-1 text-center sm:text-left">
                 Months{" "}
-                <span className="text-gray-300 font-medium">
-                  {(accordionPage - 1) * ACCORDION_PAGE_SIZE + 1}–{Math.min(accordionPage * ACCORDION_PAGE_SIZE, monthGroups.length)}
-                </span>{" "}of{" "}
+                <span className="text-gray-300 font-medium">{(accordionPage - 1) * ACCORDION_PAGE_SIZE + 1}–{Math.min(accordionPage * ACCORDION_PAGE_SIZE, monthGroups.length)}</span>{" "}of{" "}
                 <span className="text-gray-300 font-medium">{monthGroups.length}</span>
               </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => { setAccordionPage((p) => Math.max(1, p - 1)); setExpandedMonth(null); }}
-                  disabled={accordionPage === 1}
-                  className="px-3 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >‹ Prev</button>
-                <span className="text-xs text-gray-500">{accordionPage} / {accordionTotalPages}</span>
-                <button
-                  onClick={() => { setAccordionPage((p) => Math.min(accordionTotalPages, p + 1)); setExpandedMonth(null); }}
-                  disabled={accordionPage === accordionTotalPages}
-                  className="px-3 py-1 rounded text-xs text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >Next ›</button>
-              </div>
             </div>
           )}
         </div>
