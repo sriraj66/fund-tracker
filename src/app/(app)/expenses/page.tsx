@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import { formatINR, formatDate } from "@/lib/utils";
 import StatCard from "@/components/StatCard";
-import { Wallet, TrendingDown, Receipt, BarChart2, Plus, ExternalLink } from "lucide-react";
+import { Wallet, TrendingDown, Receipt, BarChart2, Plus, ExternalLink, PiggyBank } from "lucide-react";
 import Link from "next/link";
 import ExpenseAddModal from "./ExpenseAddModal";
 import CategoryManageModal from "./CategoryManageModal";
@@ -14,6 +14,7 @@ import TagManageModal from "./TagManageModal";
 import ExpenseMonthlyStats from "./ExpenseMonthlyStats";
 import { getCategoryColor, getCategoryIcon } from "./CategoryManageModal";
 import { getTagColor } from "./TagManageModal";
+import SavingsAddModal, { type SavingsRow } from "./SavingsAddModal";
 
 interface ExpenseRow {
   id: string;
@@ -122,13 +123,15 @@ function ExpenseDeleteButton({ id, onDeleted }: { id: string; onDeleted?: () => 
   );
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default function ExpensesPage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<ExpenseRow[]>([]);
+  const [savings, setSavings] = useState<SavingsRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [txPage, setTxPage] = useState(1);
+  const [savPage, setSavPage] = useState(1);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterTag, setFilterTag] = useState<string>("all");
   const [tagColorMap, setTagColorMap] = useState<TagColorMap>({});
@@ -137,11 +140,13 @@ export default function ExpensesPage() {
     if (!user) return;
     setLoading(true);
     try {
-      const [expSnap, tagSnap] = await Promise.all([
+      const [expSnap, tagSnap, savSnap] = await Promise.all([
         getDocs(query(collection(db, "users", user.uid, "expenses"), orderBy("date", "desc"))),
         getDocs(query(collection(db, "users", user.uid, "expense_tags"), orderBy("created_at", "asc"))),
+        getDocs(query(collection(db, "users", user.uid, "savings"), orderBy("date", "desc"))),
       ]);
       setRows(expSnap.docs.map((d) => ({ id: d.id, ...d.data() } as ExpenseRow)));
+      setSavings(savSnap.docs.map((d) => ({ id: d.id, ...d.data() } as SavingsRow)));
       // Build tag color map
       const map: TagColorMap = {};
       tagSnap.docs.forEach((d) => {
@@ -150,6 +155,7 @@ export default function ExpensesPage() {
       });
       setTagColorMap(map);
       setTxPage(1);
+      setSavPage(1);
     } finally {
       setLoading(false);
     }
@@ -210,6 +216,14 @@ export default function ExpensesPage() {
     [filteredRows, txPage]
   );
 
+  // Savings pagination
+  const totalSavings = savings.reduce((s, r) => s + Number(r.amount), 0);
+  const savTotalPages = Math.max(1, Math.ceil(savings.length / PAGE_SIZE));
+  const paginatedSavings = useMemo(
+    () => savings.slice((savPage - 1) * PAGE_SIZE, savPage * PAGE_SIZE),
+    [savings, savPage]
+  );
+
   if (loading) return (
     <div className="flex items-center justify-center py-20">
       <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
@@ -237,6 +251,7 @@ export default function ExpensesPage() {
           </Link>
           <TagManageModal onChanged={fetchData} />
           <CategoryManageModal onChanged={fetchData} />
+          <SavingsAddModal onAdded={fetchData} />
           <ExpenseAddModal onAdded={fetchData} />
         </div>
       </div>
@@ -260,33 +275,21 @@ export default function ExpensesPage() {
           iconBg="bg-orange-500/10"
         />
         <StatCard
-          title="All-Time Total"
+          title="Total Savings"
+          value={formatINR(totalSavings)}
+          subtitle={`${savings.length} saving${savings.length !== 1 ? "s" : ""} recorded`}
+          icon={PiggyBank}
+          iconColor="text-emerald-400"
+          iconBg="bg-emerald-500/10"
+        />
+        <StatCard
+          title="All-Time Expenses"
           value={formatINR(allTimeTotal)}
           subtitle={`${rows.length} total expenses`}
           icon={Receipt}
           iconColor="text-amber-400"
           iconBg="bg-amber-500/10"
         />
-        <div className="glass-card p-4 md:p-5">
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Top Category</p>
-          {topCat ? (() => {
-            const TopIcon = getCategoryIcon(topCat.icon);
-            const color = getCategoryColor(topCat.color);
-            return (
-              <div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center ${color.bg}`}>
-                    <TopIcon className={`w-3.5 h-3.5 ${color.text}`} />
-                  </span>
-                  <p className="text-lg font-bold text-white truncate">{topCat.name}</p>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">{formatINR(topCat.total)} this month</p>
-              </div>
-            );
-          })() : (
-            <p className="text-sm text-gray-500 mt-2">No data yet</p>
-          )}
-        </div>
       </div>
 
       {/* Monthly stats (bar chart + accordion) */}
@@ -329,6 +332,91 @@ export default function ExpensesPage() {
           </div>
         </div>
       )}
+
+      {/* Savings history */}
+      <div className="glass-card overflow-hidden">
+        <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <PiggyBank className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-base font-semibold text-white">Savings</h2>
+          </div>
+          <span className="text-xs text-gray-500">{savings.length} record{savings.length !== 1 ? "s" : ""}</span>
+        </div>
+
+        {savings.length === 0 ? (
+          <div className="px-6 py-10 text-center">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+              <PiggyBank className="w-6 h-6 text-emerald-400" />
+            </div>
+            <p className="text-gray-400 text-sm font-medium">No savings recorded yet</p>
+            <p className="text-gray-500 text-xs mt-1">Click &ldquo;Add Saving&rdquo; to log your first saving.</p>
+          </div>
+        ) : (
+          <>
+            {/* Mobile card list */}
+            <div className="sm:hidden divide-y divide-gray-800/50">
+              {paginatedSavings.map((s) => (
+                <div key={s.id} className="px-4 py-3">
+                  <div className="flex items-start gap-3">
+                    <span className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-500/10">
+                      <PiggyBank className="w-4 h-4 text-emerald-400" />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium text-gray-200 leading-snug">{s.description}</p>
+                        <span className="text-sm font-bold text-emerald-400 flex-shrink-0 ml-1">{formatINR(Number(s.amount))}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-1.5 mt-0.5">
+                        <span className="text-xs font-medium text-emerald-500">{s.type}</span>
+                        <span className="text-gray-700 text-xs">·</span>
+                        <span className="text-gray-500 text-xs">{formatDate(s.date)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th className="text-right">Amount</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedSavings.map((s) => (
+                    <tr key={s.id}>
+                      <td>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400">
+                          <PiggyBank className="w-3 h-3" />
+                          {s.type}
+                        </span>
+                      </td>
+                      <td className="font-medium text-gray-200 max-w-[220px] truncate">{s.description}</td>
+                      <td className="text-right font-semibold text-emerald-400">{formatINR(Number(s.amount))}</td>
+                      <td className="text-gray-400 text-xs">{formatDate(s.date)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <PaginationBar
+              page={savPage}
+              totalPages={savTotalPages}
+              total={savings.length}
+              pageSize={PAGE_SIZE}
+              label="savings"
+              onPage={setSavPage}
+            />
+          </>
+        )}
+      </div>
 
       {/* Transaction history */}
       <div className="glass-card overflow-hidden">
