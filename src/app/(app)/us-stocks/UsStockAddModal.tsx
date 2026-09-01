@@ -84,9 +84,10 @@ export default function UsStockAddModal({ onAdded }: Props) {
                 <div><label className="form-label">Shares *</label><input type="number" inputMode="decimal" name="quantity" className="form-input" placeholder="1.0" step="0.000001" min="0" value={form.quantity} onChange={handleChange} required /></div>
                 <div><label className="form-label">Price (USD)</label><input type="number" inputMode="decimal" name="price" className="form-input" placeholder="185.00" step="0.01" value={form.price} onChange={handleChange} /></div>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div><label className="form-label">Amount (USD)</label><input type="number" inputMode="decimal" name="amount" className="form-input" placeholder="185.00" step="0.01" value={form.amount} onChange={handleChange} /></div>
-                <div><label className="form-label">Date *</label><input type="date" name="transaction_date" className="form-input min-w-0" value={form.transaction_date} onChange={handleChange} required /></div>
+              <div><label className="form-label">Amount (USD)</label><input type="number" inputMode="decimal" name="amount" className="form-input" placeholder="185.00" step="0.01" value={form.amount} onChange={handleChange} /></div>
+              <div>
+                <label className="form-label">Date *</label>
+                <input type="date" name="transaction_date" className="form-input" value={form.transaction_date} onChange={handleChange} required />
               </div>
               <div><label className="form-label">Notes</label><textarea name="notes" className="form-input resize-none" rows={2} value={form.notes} onChange={handleChange} /></div>
               {error && <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2 text-sm text-red-400">{error}</div>}

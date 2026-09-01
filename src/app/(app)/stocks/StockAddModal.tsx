@@ -183,27 +183,25 @@ export default function StockAddModal({ onAdded }: Props) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="form-label">Execution Date &amp; Time</label>
-                  <input
-                    type="datetime-local"
-                    name="execution_date"
-                    className="form-input min-w-0"
-                    value={form.execution_date}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div>
-                  <label className="form-label">ISIN</label>
-                  <input
-                    name="isin"
-                    className="form-input"
-                    placeholder="INE040A01034"
-                    value={form.isin}
-                    onChange={handleChange}
-                  />
-                </div>
+              <div>
+                <label className="form-label">Execution Date &amp; Time</label>
+                <input
+                  type="datetime-local"
+                  name="execution_date"
+                  className="form-input"
+                  value={form.execution_date}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label className="form-label">ISIN</label>
+                <input
+                  name="isin"
+                  className="form-input"
+                  placeholder="INE040A01034"
+                  value={form.isin}
+                  onChange={handleChange}
+                />
               </div>
 
               <div>
