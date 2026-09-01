@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import { formatINR, formatDate } from "@/lib/utils";
 import StatCard from "@/components/StatCard";
-import { Wallet, TrendingDown, Receipt, BarChart2, Plus, ExternalLink, PiggyBank } from "lucide-react";
+import { Wallet, TrendingDown, Receipt, BarChart2, Plus, ExternalLink, PiggyBank, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import ExpenseAddModal from "./ExpenseAddModal";
 import CategoryManageModal from "./CategoryManageModal";
@@ -125,6 +125,20 @@ function ExpenseDeleteButton({ id, onDeleted }: { id: string; onDeleted?: () => 
 
 const PAGE_SIZE = 10;
 
+// ─── Month key helpers ─────────────────────────────────────────────────────
+function toMonthKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function shiftMonth(key: string, delta: number): string {
+  const [y, m] = key.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return toMonthKey(d);
+}
+function monthLabel(key: string) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+}
+
 export default function ExpensesPage() {
   const { user } = useAuth();
   const [rows, setRows] = useState<ExpenseRow[]>([]);
@@ -135,6 +149,18 @@ export default function ExpensesPage() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterTag, setFilterTag] = useState<string>("all");
   const [tagColorMap, setTagColorMap] = useState<TagColorMap>({});
+
+  const now = new Date();
+  const todayKey = toMonthKey(now);
+  const [selectedMonthKey, setSelectedMonthKey] = useState(todayKey);
+
+  const goMonth = (delta: number) => {
+    setSelectedMonthKey((k) => shiftMonth(k, delta));
+    setTxPage(1);
+    setSavPage(1);
+    setFilterCategory("all");
+    setFilterTag("all");
+  };
 
   const fetchData = async () => {
     if (!user) return;
@@ -147,7 +173,6 @@ export default function ExpensesPage() {
       ]);
       setRows(expSnap.docs.map((d) => ({ id: d.id, ...d.data() } as ExpenseRow)));
       setSavings(savSnap.docs.map((d) => ({ id: d.id, ...d.data() } as SavingsRow)));
-      // Build tag color map
       const map: TagColorMap = {};
       tagSnap.docs.forEach((d) => {
         const data = d.data() as { name: string; color: string };
@@ -163,52 +188,59 @@ export default function ExpensesPage() {
 
   useEffect(() => { fetchData(); }, [user]);
 
-  // Current month stats
-  const now = new Date();
-  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const thisMonthRows = rows.filter((r) => r.date?.slice(0, 7) === currentMonthKey);
-  const thisMonthTotal = thisMonthRows.reduce((s, r) => s + Number(r.amount), 0);
+  // Selected-month rows
+  const selectedMonthRows = useMemo(
+    () => rows.filter((r) => r.date?.slice(0, 7) === selectedMonthKey),
+    [rows, selectedMonthKey]
+  );
+  const selectedMonthTotal = selectedMonthRows.reduce((s, r) => s + Number(r.amount), 0);
 
   // All-time total
   const allTimeTotal = rows.reduce((s, r) => s + Number(r.amount), 0);
 
-  // Top category this month
-  const catMap = new Map<string, { name: string; icon: string; color: string; total: number }>();
-  for (const r of thisMonthRows) {
-    const ex = catMap.get(r.category_id) ?? { name: r.category_name, icon: r.category_icon, color: r.category_color, total: 0 };
-    ex.total += Number(r.amount);
-    catMap.set(r.category_id, ex);
-  }
-  const topCat = Array.from(catMap.values()).sort((a, b) => b.total - a.total)[0];
+  // Category breakdown for selected month
+  const catMap = useMemo(() => {
+    const m = new Map<string, { name: string; icon: string; color: string; total: number }>();
+    for (const r of selectedMonthRows) {
+      const ex = m.get(r.category_id) ?? { name: r.category_name, icon: r.category_icon, color: r.category_color, total: 0 };
+      ex.total += Number(r.amount);
+      m.set(r.category_id, ex);
+    }
+    return m;
+  }, [selectedMonthRows]);
 
-  // Avg per day this month
-  const daysInMonth = now.getDate();
-  const avgPerDay = daysInMonth > 0 ? thisMonthTotal / daysInMonth : 0;
+  // Avg per day — full month for past, days elapsed for current
+  const [selYear, selMon] = selectedMonthKey.split("-").map(Number);
+  const isCurrentMonth = selectedMonthKey === todayKey;
+  const daysElapsed = isCurrentMonth
+    ? now.getDate()
+    : new Date(selYear, selMon, 0).getDate(); // last day of selected month = total days
+  const avgPerDay = daysElapsed > 0 ? selectedMonthTotal / daysElapsed : 0;
 
-  // Unique categories for filter
+  // Unique categories for filter (from selected month rows)
   const uniqueCategories = useMemo(() => {
     const seen = new Map<string, { id: string; name: string; icon: string; color: string }>();
-    for (const r of rows) {
+    for (const r of selectedMonthRows) {
       if (!seen.has(r.category_id)) {
         seen.set(r.category_id, { id: r.category_id, name: r.category_name, icon: r.category_icon, color: r.category_color });
       }
     }
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [rows]);
+  }, [selectedMonthRows]);
 
-  // Unique tags across all expenses for filter
+  // Unique tags for filter (from selected month rows)
   const uniqueTags = useMemo(() => {
     const seen = new Set<string>();
-    rows.forEach((r) => r.tags?.forEach((t) => seen.add(t)));
+    selectedMonthRows.forEach((r) => r.tags?.forEach((t) => seen.add(t)));
     return Array.from(seen).sort();
-  }, [rows]);
+  }, [selectedMonthRows]);
 
-  // Filtered rows — apply both category and tag filter
+  // Filtered rows — selected month + category + tag
   const filteredRows = useMemo(() => {
-    let result = filterCategory === "all" ? rows : rows.filter((r) => r.category_id === filterCategory);
+    let result = filterCategory === "all" ? selectedMonthRows : selectedMonthRows.filter((r) => r.category_id === filterCategory);
     if (filterTag !== "all") result = result.filter((r) => r.tags?.includes(filterTag));
     return result;
-  }, [rows, filterCategory, filterTag]);
+  }, [selectedMonthRows, filterCategory, filterTag]);
 
   const txTotalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
   const paginatedRows = useMemo(
@@ -216,12 +248,17 @@ export default function ExpensesPage() {
     [filteredRows, txPage]
   );
 
-  // Savings pagination
+  // Savings — filtered to selected month
+  const selectedMonthSavings = useMemo(
+    () => savings.filter((s) => s.date?.slice(0, 7) === selectedMonthKey),
+    [savings, selectedMonthKey]
+  );
   const totalSavings = savings.reduce((s, r) => s + Number(r.amount), 0);
-  const savTotalPages = Math.max(1, Math.ceil(savings.length / PAGE_SIZE));
+  const selectedMonthSavingsTotal = selectedMonthSavings.reduce((s, r) => s + Number(r.amount), 0);
+  const savTotalPages = Math.max(1, Math.ceil(selectedMonthSavings.length / PAGE_SIZE));
   const paginatedSavings = useMemo(
-    () => savings.slice((savPage - 1) * PAGE_SIZE, savPage * PAGE_SIZE),
-    [savings, savPage]
+    () => selectedMonthSavings.slice((savPage - 1) * PAGE_SIZE, savPage * PAGE_SIZE),
+    [selectedMonthSavings, savPage]
   );
 
   if (loading) return (
@@ -230,7 +267,7 @@ export default function ExpensesPage() {
     </div>
   );
 
-  const monthName = now.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  const monthName = monthLabel(selectedMonthKey);
 
   return (
     <div className="space-y-6 pb-6 sm:space-y-8">
@@ -256,12 +293,37 @@ export default function ExpensesPage() {
         </div>
       </div>
 
+      {/* Month switcher */}
+      <div className="flex items-center justify-center gap-2">
+        <button
+          onClick={() => goMonth(-1)}
+          className="p-2 rounded-xl bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-all"
+          aria-label="Previous month"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <div className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gray-800/80 border border-gray-700/60 min-w-[190px] justify-center">
+          <span className="text-sm font-semibold text-white">{monthName}</span>
+          {isCurrentMonth && (
+            <span className="text-xs px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-400 font-medium">Now</span>
+          )}
+        </div>
+        <button
+          onClick={() => goMonth(1)}
+          disabled={isCurrentMonth}
+          className="p-2 rounded-xl bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Next month"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
-          title={`${monthName} Spent`}
-          value={formatINR(thisMonthTotal)}
-          subtitle={`${thisMonthRows.length} expense${thisMonthRows.length !== 1 ? "s" : ""} this month`}
+          title="Month Spent"
+          value={formatINR(selectedMonthTotal)}
+          subtitle={`${selectedMonthRows.length} expense${selectedMonthRows.length !== 1 ? "s" : ""} in ${monthName}`}
           icon={Wallet}
           iconColor="text-rose-400"
           iconBg="bg-rose-500/10"
@@ -269,15 +331,15 @@ export default function ExpensesPage() {
         <StatCard
           title="Avg Per Day"
           value={formatINR(avgPerDay)}
-          subtitle={`Based on ${daysInMonth} days so far`}
+          subtitle={isCurrentMonth ? `Based on ${daysElapsed} days so far` : `Over ${daysElapsed} days`}
           icon={TrendingDown}
           iconColor="text-orange-400"
           iconBg="bg-orange-500/10"
         />
         <StatCard
-          title="Total Savings"
-          value={formatINR(totalSavings)}
-          subtitle={`${savings.length} saving${savings.length !== 1 ? "s" : ""} recorded`}
+          title="Month Savings"
+          value={formatINR(selectedMonthSavingsTotal)}
+          subtitle={`${selectedMonthSavings.length} saving${selectedMonthSavings.length !== 1 ? "s" : ""} · All-time ${formatINR(totalSavings)}`}
           icon={PiggyBank}
           iconColor="text-emerald-400"
           iconBg="bg-emerald-500/10"
@@ -307,7 +369,7 @@ export default function ExpensesPage() {
               .map((cat) => {
                 const CatIcon = getCategoryIcon(cat.icon);
                 const color = getCategoryColor(cat.color);
-                const pct = thisMonthTotal > 0 ? (cat.total / thisMonthTotal) * 100 : 0;
+                const pct = selectedMonthTotal > 0 ? (cat.total / selectedMonthTotal) * 100 : 0;
                 return (
                   <div key={cat.name}>
                     <div className="flex items-center justify-between text-sm mb-1.5">
@@ -340,10 +402,10 @@ export default function ExpensesPage() {
             <PiggyBank className="w-4 h-4 text-emerald-400" />
             <h2 className="text-base font-semibold text-white">Savings</h2>
           </div>
-          <span className="text-xs text-gray-500">{savings.length} record{savings.length !== 1 ? "s" : ""}</span>
+          <span className="text-xs text-gray-500">{selectedMonthSavings.length} record{selectedMonthSavings.length !== 1 ? "s" : ""}</span>
         </div>
 
-        {savings.length === 0 ? (
+        {selectedMonthSavings.length === 0 ? (
           <div className="px-6 py-10 text-center">
             <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
               <PiggyBank className="w-6 h-6 text-emerald-400" />
@@ -490,9 +552,13 @@ export default function ExpensesPage() {
             <p className="text-gray-400 text-sm font-medium">No expenses yet</p>
             <p className="text-gray-500 text-xs mt-1">Click &ldquo;Add Expense&rdquo; to record your first expense.</p>
           </div>
+        ) : selectedMonthRows.length === 0 ? (
+          <div className="px-6 py-10 text-center">
+            <p className="text-gray-500 text-sm">No expenses in {monthName}.</p>
+          </div>
         ) : filteredRows.length === 0 ? (
           <div className="px-6 py-10 text-center">
-            <p className="text-gray-500 text-sm">No expenses in this category.</p>
+            <p className="text-gray-500 text-sm">No expenses match this filter.</p>
           </div>
         ) : (
           <>

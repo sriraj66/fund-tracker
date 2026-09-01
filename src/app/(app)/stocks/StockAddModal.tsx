@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
@@ -76,13 +77,13 @@ export default function StockAddModal({ onAdded }: Props) {
         Add Order
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      {open && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <div className="relative w-full sm:max-w-lg bg-gray-900/95 backdrop-blur-sm border border-gray-800/60 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 shadow-2xl max-h-[88vh] overflow-y-auto overscroll-contain">
+          <div className="relative w-full max-w-none sm:max-w-lg bg-gray-900/95 backdrop-blur-sm border border-gray-800/60 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 shadow-2xl max-h-[88vh] overflow-y-auto overscroll-contain overflow-x-hidden">
             <div className="sm:hidden flex justify-center mb-3 -mt-1">
               <div className="w-10 h-1 rounded-full bg-gray-700" />
             </div>
@@ -96,7 +97,7 @@ export default function StockAddModal({ onAdded }: Props) {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 min-w-0">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="form-label">Stock Name *</label>
@@ -242,7 +243,8 @@ export default function StockAddModal({ onAdded }: Props) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

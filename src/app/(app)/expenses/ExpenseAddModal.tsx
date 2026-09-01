@@ -213,14 +213,13 @@ export default function ExpenseAddModal({ onAdded, fab }: Props) {
 
                 {/* Description */}
                 <div>
-                  <label className="form-label">Description *</label>
+                  <label className="form-label">Description</label>
                   <input
                     name="description"
                     className="form-input"
-                    placeholder="e.g. Dinner at restaurant"
+                    placeholder="e.g. Dinner at restaurant (optional)"
                     value={form.description}
                     onChange={handleChange}
-                    required
                   />
                 </div>
 

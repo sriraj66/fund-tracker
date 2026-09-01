@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
@@ -64,16 +65,16 @@ export default function GoldAddModal({ onAdded }: Props) {
   return (
     <>
       <button onClick={() => setOpen(true)} className="btn-primary"><Plus className="w-4 h-4" />Add Purchase</button>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:p-4">
+      {open && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative w-full sm:max-w-lg bg-gray-900/95 backdrop-blur-sm border border-gray-800/60 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 shadow-2xl max-h-[88vh] overflow-y-auto overscroll-contain">
+          <div className="relative w-full max-w-none sm:max-w-lg bg-gray-900/95 backdrop-blur-sm border border-gray-800/60 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 shadow-2xl max-h-[88vh] overflow-y-auto overflow-x-hidden overscroll-contain">
             <div className="w-10 h-1 bg-gray-600 rounded-full mx-auto mb-4 sm:hidden" />
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-white">Add Gold Purchase</h2>
               <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 min-w-0">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label className="form-label">Purchase Date *</label><input type="date" name="purchase_date" className="form-input min-w-0" value={form.purchase_date} onChange={handleChange} required /></div>
                 <div><label className="form-label">Gold Type *</label><select name="gold_type" className="form-input" value={form.gold_type} onChange={handleChange}><option>Digital Gold</option><option>Physical Gold</option><option>Sovereign Gold Bond</option><option>Gold ETF</option><option>Gold MF</option></select></div>
@@ -91,7 +92,8 @@ export default function GoldAddModal({ onAdded }: Props) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
