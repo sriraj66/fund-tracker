@@ -40,7 +40,7 @@ export default function SettingsPage() {
         crypto, cryptoH, gold, goldH, expenses, snap,
       ] = await Promise.all([
         safe("mf_transactions"),   safe("mf_holdings"),
-        safe("stock_transactions"), safe("stock_holdings"),
+        safe("stock_monthly_entries"), safe("stock_holdings"),
         safe("us_stock_transactions"), safe("us_stock_holdings"),
         safe("crypto_transactions"), safe("crypto_holdings"),
         safe("gold_transactions"),  safe("gold_holdings"),

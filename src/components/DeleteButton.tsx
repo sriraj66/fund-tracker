@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Trash2, Loader2 } from "lucide-react";
 import { auth } from "@/lib/firebase/config";
 
@@ -9,10 +8,10 @@ interface DeleteButtonProps {
   id: string;
   endpoint: string;
   itemName?: string;
+  onDeleted?: () => void;
 }
 
-export default function DeleteButton({ id, endpoint, itemName }: DeleteButtonProps) {
-  const router = useRouter();
+export default function DeleteButton({ id, endpoint, itemName, onDeleted }: DeleteButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -28,7 +27,7 @@ export default function DeleteButton({ id, endpoint, itemName }: DeleteButtonPro
       if (!res.ok || data.error) {
         alert(`Error: ${data.error ?? "Delete failed"}`);
       } else {
-        router.refresh();
+        onDeleted?.();
       }
     } catch (error) {
       alert(`Network error: ${error}`);

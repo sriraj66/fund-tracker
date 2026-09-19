@@ -280,7 +280,7 @@ export default function MfMonthlyStats({ transactions, onDeleted }: Props) {
                                 <td className="text-right text-gray-300">{t.nav ? formatINR(Number(t.nav)) : "—"}</td>
                                 <td className="text-right font-medium text-gray-200">{formatINR(Number(t.amount))}</td>
                                 <td className="text-gray-400 text-xs">{formatDate(t.transaction_date)}</td>
-                                <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/mf" itemName={t.scheme_name} /></td>
+                                <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/mf" itemName={t.scheme_name} onDeleted={onDeleted} /></td>
                               </tr>
                             ))}
                           </tbody>

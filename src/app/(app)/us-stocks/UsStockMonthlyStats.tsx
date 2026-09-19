@@ -228,7 +228,7 @@ export default function UsStockMonthlyStats({ transactions, usdToInr, onDeleted 
                                 <td className="text-right font-medium text-gray-200">{t.amount ? formatUSD(Math.abs(Number(t.amount))) : "—"}</td>
                                 <td className="text-right text-gray-400 text-xs">{t.amount ? formatINR(Math.abs(Number(t.amount)) * usdToInr) : "—"}</td>
                                 <td className="text-gray-400 text-xs">{formatDate(t.transaction_date)}</td>
-                                <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/us-stocks" itemName={t.symbol} /></td>
+                                <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/us-stocks" itemName={t.symbol} onDeleted={onDeleted} /></td>
                               </tr>
                             ))}
                           </tbody>

@@ -255,7 +255,7 @@ export default function GoldPage() {
                       <td className="text-right text-gray-300">{formatINR(Number(t.price_per_gram))}</td>
                       <td className="text-right font-semibold text-yellow-400">{formatINR(Number(t.amount))}</td>
                       <td className="text-gray-500 text-xs max-w-[160px] truncate">{t.notes ?? "—"}</td>
-                      <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/gold" itemName={t.gold_type} /></td>
+                      <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/gold" itemName={t.gold_type} onDeleted={fetchData} /></td>
                     </tr>
                   ))}
                 </tbody>

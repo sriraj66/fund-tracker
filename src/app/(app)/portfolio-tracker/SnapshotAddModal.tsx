@@ -52,7 +52,7 @@ export default function SnapshotAddModal({ onAdded }: Props) {
         getDocs(base("gold_holdings")),
         getDocs(base("crypto_transactions")),
         getDocs(base("mf_transactions")),
-        getDocs(base("stock_transactions")),
+        getDocs(base("stock_monthly_entries")),
         getDocs(base("us_stock_transactions")),
         getDocs(base("settings")),
       ]);
@@ -70,10 +70,16 @@ export default function SnapshotAddModal({ onAdded }: Props) {
         const t = d.data().transaction_type;
         return (t === "REDEMPTION" || t === "REDEEM") ? s - amt : s + amt;
       }, 0);
-      const stockInv = stockTx.docs.reduce((s, d) => {
-        const val = Number(d.data().value ?? 0);
-        return d.data().transaction_type === "BUY" ? s + val : s - val;
-      }, 0);
+      // Use the most recent month's invested + current_value from the holdings-snapshot model
+      const stockDocs = stockTx.docs.map(d => d.data() as {
+        month?: string;
+        invested?: number;
+        current_value?: number;
+        net_invested?: number;
+      });
+      const latestStockDoc = stockDocs.sort((a, b) => (b.month ?? "").localeCompare(a.month ?? ""))[0];
+      const stockInv = latestStockDoc ? Number(latestStockDoc.invested ?? latestStockDoc.net_invested ?? 0) : 0;
+      const stockCur = latestStockDoc ? Number(latestStockDoc.current_value ?? 0) : 0;
       const usInv = usTx.docs.reduce((s, d) => {
         const amt = Math.abs(Number(d.data().amount ?? 0)) * usdToInr;
         return d.data().side === "buy" ? s + amt : s - amt;
@@ -85,6 +91,7 @@ export default function SnapshotAddModal({ onAdded }: Props) {
         crypto_invested:    cryptoInv > 0 ? cryptoInv.toFixed(2) : "",
         mf_invested:        mfInv    > 0 ? mfInv.toFixed(2)    : "",
         in_stocks_invested: stockInv > 0 ? stockInv.toFixed(2) : "",
+        in_stocks_value:    stockCur > 0 ? stockCur.toFixed(2) : "",
         us_stocks_invested: usInv    > 0 ? usInv.toFixed(2)    : "",
       }));
       setSynced(true);
@@ -161,9 +168,16 @@ export default function SnapshotAddModal({ onAdded }: Props) {
               </div>
 
               {synced && (
-                <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
-                  <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                  Invested amounts synced from your transactions. Now enter the current market value for each asset.
+                <div className="flex flex-col gap-1 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="font-medium">Sync complete</span>
+                  </div>
+                  <ul className="ml-5 space-y-0.5 text-emerald-300/80">
+                    <li>• Invested amounts synced from all asset collections</li>
+                    <li>• Indian Stocks: <span className="text-emerald-300 font-medium">Invested &amp; Current Value</span> synced from latest holdings statement</li>
+                    <li>• Fill in current market values for Gold, Crypto, MF &amp; US Stocks</li>
+                  </ul>
                 </div>
               )}
 
@@ -176,18 +190,28 @@ export default function SnapshotAddModal({ onAdded }: Props) {
                 </div>
                 <div className="space-y-2">
                   {[
-                    { label: "Gold",          inv: "gold_invested",      val: "gold_value",      color: "text-yellow-400" },
-                    { label: "Crypto",         inv: "crypto_invested",    val: "crypto_value",    color: "text-orange-400" },
-                    { label: "Mutual Funds",   inv: "mf_invested",        val: "mf_value",        color: "text-violet-400" },
-                    { label: "Indian Stocks",  inv: "in_stocks_invested", val: "in_stocks_value", color: "text-emerald-400" },
-                    { label: "US Stocks (₹)", inv: "us_stocks_invested", val: "us_stocks_value", color: "text-blue-400" },
+                    { label: "Gold",          inv: "gold_invested",      val: "gold_value",      color: "text-yellow-400",  autoVal: false },
+                    { label: "Crypto",         inv: "crypto_invested",    val: "crypto_value",    color: "text-orange-400",  autoVal: false },
+                    { label: "Mutual Funds",   inv: "mf_invested",        val: "mf_value",        color: "text-violet-400",  autoVal: false },
+                    { label: "IN Stocks",      inv: "in_stocks_invested", val: "in_stocks_value", color: "text-emerald-400", autoVal: true  },
+                    { label: "US Stocks (₹)", inv: "us_stocks_invested", val: "us_stocks_value", color: "text-blue-400",    autoVal: false },
                   ].map((asset) => (
                     <div key={asset.label} className="grid grid-cols-3 gap-2 items-center">
-                      <span className={`text-sm font-medium ${asset.color}`}>{asset.label}</span>
-                      <input type="number" inputMode="decimal" name={asset.inv} className="form-input text-sm bg-gray-800/80" placeholder="0.00"
-                        step="0.01" value={form[asset.inv as keyof typeof form]} onChange={handleChange} />
-                      <input type="number" inputMode="decimal" name={asset.val} className="form-input text-sm" placeholder="Enter value"
-                        step="0.01" value={form[asset.val as keyof typeof form]} onChange={handleChange} />
+                      <div>
+                        <span className={`text-sm font-medium ${asset.color}`}>{asset.label}</span>
+                        {asset.autoVal && (
+                          <span className="block text-[10px] text-emerald-500/70 leading-tight">auto from holdings</span>
+                        )}
+                      </div>
+                      <input type="number" inputMode="decimal" name={asset.inv}
+                        className={`form-input text-sm ${asset.autoVal ? "bg-emerald-900/20 border-emerald-700/40" : "bg-gray-800/80"}`}
+                        placeholder="0.00" step="0.01"
+                        value={form[asset.inv as keyof typeof form]} onChange={handleChange} />
+                      <input type="number" inputMode="decimal" name={asset.val}
+                        className={`form-input text-sm ${asset.autoVal ? "bg-emerald-900/20 border-emerald-700/40" : ""}`}
+                        placeholder={asset.autoVal ? "auto-filled" : "Enter value"}
+                        step="0.01"
+                        value={form[asset.val as keyof typeof form]} onChange={handleChange} />
                     </div>
                   ))}
                 </div>

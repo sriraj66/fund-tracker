@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useScrollLock } from "@/hooks/useScrollLock";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import { Plus, X, Loader2 } from "lucide-react";
@@ -45,21 +45,60 @@ export default function StockAddModal({ onAdded }: Props) {
     setLoading(true);
     const qty = parseFloat(form.quantity);
     const val = parseFloat(form.value);
+    const symbol = form.symbol.trim().toUpperCase();
+    const isBuy  = form.transaction_type === "BUY";
     try {
+      // ── Update stock_holdings ───────────────────────────────────────────
+      const holdingsRef = collection(db, "users", user.uid, "stock_holdings");
+      const holdingSnap = await getDocs(query(holdingsRef, where("symbol", "==", symbol)));
+
+      if (!holdingSnap.empty) {
+        const holdingDoc  = holdingSnap.docs[0];
+        const h           = holdingDoc.data();
+        const oldQty      = Number(h.quantity       ?? 0);
+        const oldInvested = Number(h.invested_amount ?? 0);
+        const oldAvg      = oldQty > 0 ? oldInvested / oldQty : 0;
+
+        const newQty      = isBuy ? oldQty + qty : Math.max(0, oldQty - qty);
+        // For SELL: remove at avg buy price so invested stays proportional
+        const newInvested = isBuy ? oldInvested + val : Math.max(0, newQty * oldAvg);
+        const newAvg      = newQty > 0 ? newInvested / newQty : 0;
+
+        await updateDoc(doc(db, "users", user.uid, "stock_holdings", holdingDoc.id), {
+          quantity:        newQty,
+          invested_amount: newInvested,
+          avg_buy_price:   newAvg,
+          updated_at:      new Date().toISOString(),
+        });
+      } else if (isBuy) {
+        // First transaction for this stock — create a new holding
+        await addDoc(holdingsRef, {
+          symbol,
+          stock_name:      form.stock_name.trim().toUpperCase(),
+          quantity:        qty,
+          avg_buy_price:   qty > 0 ? val / qty : 0,
+          invested_amount: val,
+          exchange:        form.exchange || "NSE",
+          isin:            form.isin.trim() || null,
+          updated_at:      new Date().toISOString(),
+        });
+      }
+      // ── Save transaction record ────────────────────────────────────────
       await addDoc(collection(db, "users", user.uid, "stock_transactions"), {
-        stock_name: form.stock_name.trim().toUpperCase(),
-        symbol: form.symbol.trim().toUpperCase(),
-        isin: form.isin.trim() || null,
+        stock_name:       form.stock_name.trim().toUpperCase(),
+        symbol,
+        isin:             form.isin.trim() || null,
         transaction_type: form.transaction_type,
-        quantity: qty,
-        price: qty > 0 ? val / qty : null,
-        value: val,
-        exchange: form.exchange || null,
-        execution_date: form.execution_date || null,
-        order_status: "Executed",
-        notes: form.notes || null,
-        created_at: new Date().toISOString(),
+        quantity:         qty,
+        price:            qty > 0 ? val / qty : null,
+        value:            val,
+        exchange:         form.exchange || null,
+        execution_date:   form.execution_date || null,
+        order_status:     "Executed",
+        notes:            form.notes || null,
+        created_at:       new Date().toISOString(),
       });
+
       setOpen(false);
       setForm({ stock_name: "", symbol: "", isin: "", transaction_type: "BUY", quantity: "", value: "", exchange: "NSE", execution_date: new Date().toISOString().slice(0, 16), notes: "" });
       onAdded?.();
@@ -88,7 +127,10 @@ export default function StockAddModal({ onAdded }: Props) {
               <div className="w-10 h-1 rounded-full bg-gray-700" />
             </div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-white">Add Stock Order</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Add Stock Order</h2>
+                <p className="text-xs text-gray-500 mt-0.5">If the stock is in your holdings, it will be updated automatically</p>
+              </div>
               <button
                 onClick={() => setOpen(false)}
                 className="text-gray-500 hover:text-gray-300 transition-colors"

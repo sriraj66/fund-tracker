@@ -18,10 +18,10 @@ export interface SavingsRow {
   created_at: string;
 }
 
-const SAVINGS_TYPES = [
+export const SAVINGS_TYPES = [
+  "Investment",
   "Savings Account",
   "Fixed Deposit",
-  "Investment",
   "Emergency Fund",
   "Other",
 ] as const;
@@ -40,7 +40,7 @@ export default function SavingsAddModal({ onAdded }: Props) {
     amount: "",
     description: "",
     date: new Date().toISOString().slice(0, 10),
-    type: "Savings Account",
+    type: "Investment",
     notes: "",
   });
 
@@ -73,7 +73,7 @@ export default function SavingsAddModal({ onAdded }: Props) {
         amount: "",
         description: "",
         date: new Date().toISOString().slice(0, 10),
-        type: "Savings Account",
+        type: "Investment",
         notes: "",
       });
       onAdded?.();

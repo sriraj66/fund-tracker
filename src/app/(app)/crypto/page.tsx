@@ -291,7 +291,7 @@ export default function CryptoPage() {
                         <td className="text-right font-medium text-gray-200">{t.total_inr ? formatINR(Number(t.total_inr)) : "—"}</td>
                         <td className="text-right text-yellow-400 text-xs col-mobile-hidden">{t.fee_amount ? formatINR(Number(t.fee_amount)) : "—"}</td>
                         <td className="text-gray-400 text-xs col-mobile-hidden">{formatDate(t.transaction_date)}</td>
-                        <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/crypto" itemName={displayCoin} /></td>
+                        <td className="text-center"><DeleteButton id={t.id} endpoint="/api/delete/crypto" itemName={displayCoin} onDeleted={fetchData} /></td>
                       </tr>
                     );
                   })}

@@ -15,58 +15,107 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rawData: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    const rawData: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
 
+    // Find header row
     let headerRowIndex = -1;
     for (let i = 0; i < rawData.length; i++) {
-      const row = rawData[i] as string[];
-      if (row[0]?.toString().toLowerCase().includes("stock name")) { headerRowIndex = i; break; }
+      const row = rawData[i] as unknown[];
+      if (row.some((c) => typeof c === "string" && c.toLowerCase().includes("stock name"))) {
+        headerRowIndex = i;
+        break;
+      }
     }
-    if (headerRowIndex === -1) return NextResponse.json({ error: "Invalid holdings statement format." }, { status: 422 });
+    if (headerRowIndex === -1)
+      return NextResponse.json({ error: "Could not find header row with 'Stock Name'" }, { status: 422 });
 
-    let asOfDate = new Date().toISOString().split("T")[0];
-    for (let i = 0; i < Math.min(10, rawData.length); i++) {
-      const text = (rawData[i] as string[])[0]?.toString() || "";
-      const match = text.match(/holdings?\s+(?:statement\s+)?(?:for\s+stocks\s+)?as\s+on\s+(\d{2}-\d{2}-\d{4})/i);
-      if (match) { const [day, month, year] = match[1].split("-"); asOfDate = `${year}-${month}-${day}`; break; }
+    const headers = (rawData[headerRowIndex] as unknown[]).map((h) =>
+      h ? h.toString().trim().toLowerCase() : ""
+    );
+
+    const nameIdx    = headers.findIndex((h) => h.includes("stock name"));
+    const symbolIdx  = headers.findIndex((h) => h === "symbol");
+    const exchangeIdx= headers.findIndex((h) => h === "exchange");
+    const isinIdx    = headers.findIndex((h) => h === "isin");
+    const qtyIdx     = headers.findIndex((h) => h.includes("quantity") || h === "qty");
+    const avgIdx     = headers.findIndex((h) => h.includes("avg") || h.includes("average"));
+
+    if (nameIdx === -1 || symbolIdx === -1 || qtyIdx === -1 || avgIdx === -1)
+      return NextResponse.json(
+        { error: "Missing required columns. Expected: Stock Name, Symbol, Quantity, Avg Buy Price" },
+        { status: 422 }
+      );
+
+    // Parse rows into holding records
+    interface HoldingRecord {
+      symbol: string;
+      stock_name: string;
+      quantity: number;
+      avg_buy_price: number;
+      invested_amount: number;
+      exchange: string | null;
+      isin: string | null;
+      updated_at: string;
     }
 
-    const records = [];
+    const holdings: HoldingRecord[] = [];
     for (let i = headerRowIndex + 1; i < rawData.length; i++) {
-      const row = rawData[i] as (string | number)[];
-      if (!row || row.length < 5) continue;
-      const [stockName, isin, quantity, avgBuyPrice, buyValue] = row;
-      if (!stockName || !quantity || typeof quantity !== "number" || quantity <= 0) continue;
+      const row = rawData[i] as unknown[];
+      if (!row || row.every((c) => c === null || c === "")) continue;
 
-      const stockNameStr = stockName.toString().trim();
-      const qty = Number(quantity);
-      const avgPrice = Number(avgBuyPrice) || 0;
-      records.push({
-        stock_name: stockNameStr,
-        symbol: isin?.toString().trim().split("INE")[0] || stockNameStr.substring(0, 10),
-        isin: isin?.toString().trim() || null,
-        transaction_type: "BUY",
-        quantity: qty,
-        price: avgPrice,
-        value: Number(buyValue) || qty * avgPrice,
-        exchange: "NSE",
-        execution_date: asOfDate,
-        order_status: "Opening Balance",
-        notes: `Imported from holdings statement as of ${asOfDate}`,
-        created_at: new Date().toISOString(),
+      const stockName = row[nameIdx]?.toString().trim();
+      const symbol    = row[symbolIdx]?.toString().trim().toUpperCase();
+      const qty       = parseFloat(row[qtyIdx]?.toString().replace(/,/g, "") ?? "");
+      const avgPrice  = parseFloat(row[avgIdx]?.toString().replace(/,/g, "") ?? "");
+
+      if (!stockName || !symbol || isNaN(qty) || qty <= 0 || isNaN(avgPrice) || avgPrice <= 0) continue;
+
+      holdings.push({
+        symbol,
+        stock_name:      stockName,
+        quantity:        qty,
+        avg_buy_price:   avgPrice,
+        invested_amount: qty * avgPrice,
+        exchange:        exchangeIdx >= 0 ? (row[exchangeIdx]?.toString().trim() || null) : null,
+        isin:            isinIdx    >= 0 ? (row[isinIdx]?.toString().trim()    || null) : null,
+        updated_at:      new Date().toISOString(),
       });
     }
 
-    if (records.length === 0) return NextResponse.json({ error: "No holdings found in the statement." }, { status: 422 });
+    if (holdings.length === 0)
+      return NextResponse.json({ error: "No valid holdings found in the file." }, { status: 422 });
 
     const db = getAdminFirestore();
+    const holdingsCol = db.collection("users").doc(user.uid).collection("stock_holdings");
+
+    // Fetch existing holdings to do upsert (match by symbol)
+    const symbols = holdings.map((h) => h.symbol);
+    const existingMap = new Map<string, string>(); // symbol → docId
+
+    for (let i = 0; i < symbols.length; i += 30) {
+      const chunk = symbols.slice(i, i + 30);
+      const snap = await holdingsCol.where("symbol", "in", chunk).get();
+      snap.docs.forEach((d) => existingMap.set(d.data().symbol as string, d.id));
+    }
+
+    // Batch upsert to stock_holdings
     const batch = db.batch();
-    const col = db.collection("users").doc(user.uid).collection("stock_transactions");
-    records.forEach((rec) => batch.set(col.doc(), rec));
+    for (const h of holdings) {
+      const existingId = existingMap.get(h.symbol);
+      const ref = existingId ? holdingsCol.doc(existingId) : holdingsCol.doc();
+      batch.set(ref, h);
+    }
     await batch.commit();
 
-    return NextResponse.json({ success: true, imported: records.length, skipped: 0, message: `Imported ${records.length} stock holdings`, asOfDate });
+    return NextResponse.json({
+      success: true,
+      imported: holdings.length,
+      message: `Imported ${holdings.length} stock holding${holdings.length !== 1 ? "s" : ""} into your portfolio`,
+    });
   } catch (err) {
-    return NextResponse.json({ error: `Import failed: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 });
+    return NextResponse.json(
+      { error: `Import failed: ${err instanceof Error ? err.message : String(err)}` },
+      { status: 500 }
+    );
   }
 }

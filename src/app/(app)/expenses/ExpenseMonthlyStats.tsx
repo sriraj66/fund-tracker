@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { ChevronDown, ChevronRight, Trash2, Loader2 } from "lucide-react";
 import { deleteDoc, doc } from "firebase/firestore";
@@ -55,8 +55,17 @@ interface ExpenseRow {
   notes?: string | null;
 }
 
+interface SavingsRow {
+  id: string;
+  amount: number;
+  description: string;
+  date: string;
+  type: string;
+}
+
 interface Props {
   expenses: ExpenseRow[];
+  savings?: SavingsRow[];
   onDeleted?: () => void;
 }
 
@@ -94,7 +103,7 @@ function CustomTooltip({
   );
 }
 
-export default function ExpenseMonthlyStats({ expenses, onDeleted }: Props) {
+export default function ExpenseMonthlyStats({ expenses, savings = [], onDeleted }: Props) {
   const { user } = useAuth();
   const [timeFrame, setTimeFrame] = useState("6M");
   const [accordionPage, setAccordionPage] = useState(1);
@@ -120,32 +129,52 @@ export default function ExpenseMonthlyStats({ expenses, onDeleted }: Props) {
     }
   };
 
+  // Investment totals by month (type === "Investment")
+  const investmentByMonth = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of savings) {
+      if (s.type !== "Investment") continue;
+      const key = s.date?.slice(0, 7);
+      if (!key) continue;
+      map.set(key, (map.get(key) ?? 0) + Number(s.amount));
+    }
+    return map;
+  }, [savings]);
+
   // Group by month YYYY-MM
   const monthGroups = useMemo(() => {
+    // Collect all month keys from both expenses and investments
+    const allKeys = new Set<string>();
+    expenses.forEach((e) => { if (e.date?.slice(0, 7)) allKeys.add(e.date.slice(0, 7)); });
+    investmentByMonth.forEach((_, k) => allKeys.add(k));
+
     const map = new Map<
       string,
-      { label: string; total: number; txCount: number; expenses: ExpenseRow[] }
+      { label: string; total: number; invested: number; txCount: number; expenses: ExpenseRow[] }
     >();
 
-    for (const e of expenses) {
-      const dateStr = e.date?.slice(0, 7);
-      if (!dateStr) continue;
+    for (const dateStr of allKeys) {
       const [year, month] = dateStr.split("-");
       const label = new Date(Number(year), Number(month) - 1, 1).toLocaleDateString("en-IN", {
         month: "short",
         year: "numeric",
       });
-      const existing = map.get(dateStr) ?? { label, total: 0, txCount: 0, expenses: [] };
+      map.set(dateStr, { label, total: 0, invested: investmentByMonth.get(dateStr) ?? 0, txCount: 0, expenses: [] });
+    }
+
+    for (const e of expenses) {
+      const dateStr = e.date?.slice(0, 7);
+      if (!dateStr) continue;
+      const existing = map.get(dateStr)!;
       existing.total += Number(e.amount);
       existing.txCount += 1;
       existing.expenses.push(e);
-      map.set(dateStr, existing);
     }
 
     return Array.from(map.entries())
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([key, value]) => ({ key, ...value }));
-  }, [expenses]);
+  }, [expenses, investmentByMonth]);
 
   // Chart data
   const selectedTf = TIME_FRAMES.find((t) => t.label === timeFrame)!;
@@ -157,6 +186,7 @@ export default function ExpenseMonthlyStats({ expenses, onDeleted }: Props) {
   const chartData = chartMonths.map((m) => ({
     month: m.label,
     Spent: Math.round(m.total),
+    Invested: Math.round(m.invested),
   }));
 
   // Accordion pagination
@@ -190,25 +220,33 @@ export default function ExpenseMonthlyStats({ expenses, onDeleted }: Props) {
             ))}
           </div>
         </div>
-        <div className="h-56">
+        <div className="h-60">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} barCategoryGap="40%">
+            <BarChart data={chartData} barCategoryGap="35%" barGap={3}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
               <XAxis
                 dataKey="month"
-                tick={{ fill: "#9ca3af", fontSize: 11 }}
+                tick={{ fill: "#9ca3af", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
+                interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fill: "#9ca3af", fontSize: 11 }}
+                tick={{ fill: "#9ca3af", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
-                width={52}
+                width={48}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-              <Bar dataKey="Spent" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Legend
+                wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
+                formatter={(value) => (
+                  <span style={{ color: value === "Spent" ? "#f43f5e" : "#38bdf8" }}>{value}</span>
+                )}
+              />
+              <Bar dataKey="Invested" fill="#38bdf8" radius={[4, 4, 0, 0]} maxBarSize={28} />
+              <Bar dataKey="Spent"    fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={28} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -253,8 +291,14 @@ export default function ExpenseMonthlyStats({ expenses, onDeleted }: Props) {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 md:gap-6 text-sm">
-                      <div className="text-right min-w-[100px]">
-                        <div className="text-xs text-gray-500">Total Spent</div>
+                      {month.invested > 0 && (
+                        <div className="text-right min-w-[90px]">
+                          <div className="text-xs text-gray-500">Invested</div>
+                          <div className="font-semibold text-sky-400">{formatINR(month.invested)}</div>
+                        </div>
+                      )}
+                      <div className="text-right min-w-[90px]">
+                        <div className="text-xs text-gray-500">Spent</div>
                         <div className="font-semibold text-rose-400">{formatINR(month.total)}</div>
                       </div>
                     </div>

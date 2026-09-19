@@ -9,7 +9,7 @@ export async function DELETE(request: NextRequest) {
     const db = getAdminFirestore();
     const collections = [
       "mf_transactions",
-      "stock_transactions",
+      "stock_monthly_entries",
       "us_stock_transactions",
       "crypto_transactions",
       "gold_transactions",

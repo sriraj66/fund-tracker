@@ -2,111 +2,148 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, getAdminFirestore } from "@/lib/firebase/admin";
 import * as XLSX from "xlsx";
 
+/**
+ * POST /api/import/stocks
+ *
+ * Accepts a broker Holdings Statement XLSX (Zerodha / Groww format).
+ * Reads the summary block at the top (Invested Value, Closing Value,
+ * Unrealised P&L) and stores one document per month in
+ * `stock_monthly_entries`. Existing entry for the same month is
+ * overwritten (safe to re-import).
+ *
+ * Required form fields:
+ *   file          – the .xlsx file
+ *   import_month  – "YYYY-MM" (the month this statement represents)
+ */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyIdToken(request.headers.get("authorization"));
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    const formData   = await request.formData();
+    const file       = formData.get("file")         as File   | null;
+    const importMonth = formData.get("import_month") as string | null; // "YYYY-MM"
 
+    if (!file)        return NextResponse.json({ error: "No file provided"   }, { status: 400 });
+    if (!importMonth || !/^\d{4}-\d{2}$/.test(importMonth))
+      return NextResponse.json({ error: "import_month (YYYY-MM) is required" }, { status: 400 });
+
+    // ── Parse XLSX ───────────────────────────────────────────────────────────
     const buffer = Buffer.from(await file.arrayBuffer());
-    const wb = XLSX.read(buffer, { type: "buffer" });
-    const ws = wb.Sheets[wb.SheetNames[0]];
+    const wb     = XLSX.read(buffer, { type: "buffer" });
+    const ws     = wb.Sheets[wb.SheetNames[0]];
     const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
-    let headerIdx = -1;
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i] as unknown[];
-      if (row.some((cell) => typeof cell === "string" && cell.toString().toLowerCase().includes("stock name"))) {
-        headerIdx = i;
-        break;
-      }
-    }
-    if (headerIdx === -1) return NextResponse.json({ error: "Could not find header row with 'Stock name'" }, { status: 422 });
+    // ── Extract summary values ───────────────────────────────────────────────
+    // The broker statement has a summary block like:
+    //   Row N:   ["Invested Value",  272120.48, ...]
+    //   Row N+1: ["Closing Value",   270594.44, ...]
+    //   Row N+2: ["Unrealised P&L",  -1526.04,  ...]
+    //
+    // We scan all rows for these labels (case-insensitive).
 
-    const headers = (rows[headerIdx] as unknown[]).map((h) => (h ? h.toString().trim().toLowerCase() : ""));
-    const nameIdx = headers.findIndex((h) => h.includes("stock name"));
-    const symbolIdx = headers.findIndex((h) => h === "symbol");
-    const isinIdx = headers.findIndex((h) => h === "isin");
-    const typeIdx = headers.findIndex((h) => h === "type");
-    const qtyIdx = headers.findIndex((h) => h.includes("quantity") || h === "qty");
-    const valueIdx = headers.findIndex((h) => h === "value");
-    const exchangeIdx = headers.findIndex((h) => h === "exchange");
-    const dateIdx = headers.findIndex((h) => h.includes("execution date") || h.includes("date"));
-    const statusIdx = headers.findIndex((h) => h.includes("status"));
+    const toNum = (raw: unknown): number => {
+      if (typeof raw === "number") return raw;
+      const s = (raw ?? "").toString().replace(/,/g, "").trim();
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    };
 
-    const records = [];
-    const skipped = [];
+    let invested     = 0;
+    let currentValue = 0;
+    let pnl          = 0;
+    let foundInvested = false, foundCurrent = false, foundPnl = false;
 
-    for (let i = headerIdx + 1; i < rows.length; i++) {
-      const row = rows[i] as unknown[];
-      if (!row || row.every((cell) => cell === null || cell === "")) continue;
+    // Also try to read the statement date from the heading row, e.g.
+    // "Holdings statement for stocks as on 18-09-2026"
+    let statementDateStr = "";
 
-      const stockName = row[nameIdx]?.toString().trim();
-      const symbol = row[symbolIdx]?.toString().trim();
-      const txType = row[typeIdx]?.toString().trim().toUpperCase();
-      const valueRaw = row[valueIdx]?.toString().replace(/,/g, "").trim();
-      const qtyRaw = row[qtyIdx]?.toString().replace(/,/g, "").trim();
-      const dateRaw = row[dateIdx]?.toString().trim();
+    for (const row of rows) {
+      const r = row as unknown[];
+      if (!r || r.every((c) => c === null || c === "")) continue;
 
-      if (!stockName || !symbol || !txType || !valueRaw || !qtyRaw) { skipped.push(i + 1); continue; }
+      const label = r[0]?.toString().trim().toLowerCase() ?? "";
 
-      const value = parseFloat(valueRaw);
-      const qty = parseFloat(qtyRaw);
-      if (isNaN(value) || isNaN(qty)) { skipped.push(i + 1); continue; }
-
-      let execDate: string | null = null;
-      if (dateRaw) {
-        // Try DD-MM-YYYY HH:MM AM/PM FIRST — new Date("01-07-2026...") incorrectly parses as Jan 7, not Jul 1
-        const ddmmMatch = dateRaw.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-        if (ddmmMatch) {
-          const [, dd, mm, yyyy, hh, min, ampm] = ddmmMatch;
-          let hour = parseInt(hh);
-          if (ampm?.toUpperCase() === "PM" && hour < 12) hour += 12;
-          if (ampm?.toUpperCase() === "AM" && hour === 12) hour = 0;
-          execDate = new Date(`${yyyy}-${mm}-${dd}T${String(hour).padStart(2, "0")}:${min}:00+05:30`).toISOString();
-        } else {
-          // Fallback: ISO or unambiguous formats
-          const d = new Date(dateRaw);
-          if (!isNaN(d.getTime())) execDate = d.toISOString();
-        }
+      if (!statementDateStr && label.includes("as on")) {
+        const m = label.match(/as on\s+(\d{2}-\d{2}-\d{4})/);
+        if (m) statementDateStr = m[1]; // "18-09-2026"
       }
 
-      records.push({
-        stock_name: stockName,
-        symbol,
-        isin: isinIdx >= 0 ? row[isinIdx]?.toString().trim() || null : null,
-        transaction_type: txType === "SELL" ? "SELL" : "BUY",
-        quantity: qty,
-        price: qty > 0 ? value / qty : null,
-        value,
-        exchange: exchangeIdx >= 0 ? row[exchangeIdx]?.toString().trim() || null : null,
-        execution_date: execDate,
-        order_status: statusIdx >= 0 ? row[statusIdx]?.toString().trim() || "Executed" : "Executed",
-        created_at: new Date().toISOString(),
-      });
+      if (!foundInvested && (label.includes("invested value") || label === "invested value")) {
+        invested    = toNum(r[1]);
+        foundInvested = true;
+      }
+      if (!foundCurrent && (label.includes("closing value") || label === "closing value")) {
+        currentValue = toNum(r[1]);
+        foundCurrent  = true;
+      }
+      if (!foundPnl && (label.includes("unrealised") || label.includes("unrealized") || label.includes("p&l"))) {
+        pnl    = toNum(r[1]);
+        foundPnl = true;
+      }
+
+      if (foundInvested && foundCurrent && foundPnl) break;
     }
 
-    if (records.length === 0) {
-      return NextResponse.json({ error: "No valid stock orders found in file", skipped }, { status: 422 });
+    if (!foundInvested || invested === 0) {
+      return NextResponse.json(
+        { error: "Could not find 'Invested Value' in the file. Make sure you're uploading a Holdings Statement (not an Order History)." },
+        { status: 422 }
+      );
     }
 
-    const db = getAdminFirestore();
-    const batch = db.batch();
-    const col = db.collection("users").doc(user.uid).collection("stock_transactions");
-    records.forEach((rec) => batch.set(col.doc(), rec));
-    await batch.commit();
+    // Derive closing value from pnl if only two were found
+    if (!foundCurrent && foundPnl)   currentValue = invested + pnl;
+    if (!foundPnl    && foundCurrent) pnl          = currentValue - invested;
+
+    const pnlPct = invested > 0 ? ((currentValue - invested) / invested) * 100 : 0;
+
+    // ── Build month label ────────────────────────────────────────────────────
+    const [yyyy, mm] = importMonth.split("-");
+    const monthLabel = new Date(Number(yyyy), Number(mm) - 1, 1).toLocaleDateString("en-IN", {
+      month: "short",
+      year:  "numeric",
+    });
+
+    // ── Upsert to Firestore ──────────────────────────────────────────────────
+    const adminDb = getAdminFirestore();
+    const colRef  = adminDb.collection("users").doc(user.uid).collection("stock_monthly_entries");
+
+    // Check for existing doc with this month key
+    const existing = await colRef.where("month", "==", importMonth).limit(1).get();
+
+    const data = {
+      month:          importMonth,
+      month_label:    monthLabel,
+      invested:       Math.round(invested     * 100) / 100,
+      current_value:  Math.round(currentValue * 100) / 100,
+      pnl:            Math.round(pnl          * 100) / 100,
+      pnl_pct:        Math.round(pnlPct       * 100) / 100,
+      statement_date: statementDateStr || null,
+      updated_at:     new Date().toISOString(),
+    };
+
+    if (!existing.empty) {
+      await existing.docs[0].ref.set(data, { merge: true });
+    } else {
+      await colRef.add({ ...data, created_at: new Date().toISOString() });
+    }
 
     return NextResponse.json({
-      success: true,
-      imported: records.length,
-      skipped: skipped.length,
-      message: `Imported ${records.length} stock orders${skipped.length > 0 ? `, skipped ${skipped.length} rows` : ""}`,
+      success:      true,
+      month:        importMonth,
+      month_label:  monthLabel,
+      invested:     data.invested,
+      current_value: data.current_value,
+      pnl:          data.pnl,
+      pnl_pct:      data.pnl_pct,
+      message:      `Holdings for ${monthLabel} imported — Invested ₹${data.invested.toLocaleString("en-IN")}, Current ₹${data.current_value.toLocaleString("en-IN")}, P&L ₹${data.pnl.toLocaleString("en-IN")}`,
     });
   } catch (err) {
-    console.error("Stocks import error:", err);
-    return NextResponse.json({ error: "Failed to parse file. Make sure it is the Stocks Order History XLSX." }, { status: 500 });
+    console.error("Stocks holdings import error:", err);
+    return NextResponse.json(
+      { error: "Failed to parse file. Make sure you're uploading a Holdings Statement XLSX from your broker." },
+      { status: 500 }
+    );
   }
 }

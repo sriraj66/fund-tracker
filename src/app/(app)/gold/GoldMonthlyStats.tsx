@@ -290,7 +290,7 @@ export default function GoldMonthlyStats({ transactions, onDeleted }: Props) {
                                 <td className="text-right font-semibold text-yellow-400">{formatINR(Number(t.amount))}</td>
                                 <td className="text-gray-500 text-xs max-w-[140px] truncate">{t.notes ?? "—"}</td>
                                 <td className="text-center">
-                                  <DeleteButton id={t.id} endpoint="/api/delete/gold" itemName={t.gold_type} />
+                                  <DeleteButton id={t.id} endpoint="/api/delete/gold" itemName={t.gold_type} onDeleted={onDeleted} />
                                 </td>
                               </tr>
                             ))}

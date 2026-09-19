@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useScrollLock } from "@/hooks/useScrollLock";
-import { Upload, X, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, X, Loader2, CheckCircle, AlertCircle, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase/config";
 
@@ -11,6 +11,7 @@ interface ImportButtonProps {
   accept: string;
   label?: string;
   hint?: string;
+  templateUrl?: string;
   onSuccess?: () => void;
 }
 
@@ -20,7 +21,7 @@ type State =
   | { status: "success"; message: string; imported: number }
   | { status: "error"; message: string };
 
-export default function ImportButton({ endpoint, accept, label = "Import Statement", hint, onSuccess }: ImportButtonProps) {
+export default function ImportButton({ endpoint, accept, label = "Import Statement", hint, templateUrl, onSuccess }: ImportButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ status: "idle" });
   const [open, setOpen] = useState(false);
@@ -79,11 +80,22 @@ export default function ImportButton({ endpoint, accept, label = "Import Stateme
               <div className="w-10 h-1 rounded-full bg-gray-700" />
             </div>
             <div className="flex items-center justify-between mb-5">
-              <div>
+              <div className="flex-1 min-w-0 pr-3">
                 <h2 className="text-base font-semibold text-white">{label}</h2>
                 {hint && <p className="text-xs text-gray-500 mt-0.5">{hint}</p>}
+                {templateUrl && (
+                  <a
+                    href={templateUrl}
+                    download
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 mt-1.5 text-xs text-sky-400 hover:text-sky-300 transition-colors"
+                  >
+                    <Download className="w-3 h-3" />
+                    Download template
+                  </a>
+                )}
               </div>
-              <button onClick={handleClose} className="text-gray-500 hover:text-gray-300 transition-colors">
+              <button onClick={handleClose} className="text-gray-500 hover:text-gray-300 transition-colors shrink-0">
                 <X className="w-5 h-5" />
               </button>
             </div>

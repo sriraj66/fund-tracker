@@ -5,7 +5,8 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import { formatINR, formatDate } from "@/lib/utils";
-import { TrendingUp, Calendar, BarChart3 } from "lucide-react";
+import { TrendingUp, Calendar, BarChart3, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import ImportButton from "@/components/ImportButton";
 import SnapshotAddModal from "./SnapshotAddModal";
 import PortfolioAnalytics from "./PortfolioAnalytics";
@@ -76,6 +77,30 @@ export default function PortfolioTrackerPage() {
   const absoluteReturn = latestSnapshot && latestSnapshot.total_invested > 0 ? ((latestSnapshot.total_value - latestSnapshot.total_invested) / latestSnapshot.total_invested) * 100 : 0;
   const absoluteProfit = latestSnapshot ? latestSnapshot.total_value - latestSnapshot.total_invested : 0;
 
+  const exportHistoryToXlsx = () => {
+    const data = reversedRows.map((s) => ({
+      "Date": s.snapshot_date,
+      "Gold Invested": s.gold_invested ?? 0,
+      "Gold Current": s.gold_value ?? 0,
+      "Crypto Invested": s.crypto_invested ?? 0,
+      "Crypto Current": s.crypto_value ?? 0,
+      "MF Invested": s.mf_invested ?? 0,
+      "MF Current": s.mf_value ?? 0,
+      "IN Stocks Invested": s.in_stocks_invested ?? 0,
+      "IN Stocks Current": s.in_stocks_value ?? 0,
+      "US Stocks Invested": s.us_stocks_invested ?? 0,
+      "US Stocks Current": s.us_stocks_value ?? 0,
+      "Total Invested": s.total_invested ?? 0,
+      "Total Value": s.total_value ?? 0,
+      "Return %": parseFloat((s.total_return_pct ?? 0).toFixed(2)),
+      "Profit / Loss": s.profit ?? 0,
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Portfolio History");
+    XLSX.writeFile(wb, `portfolio-history-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
@@ -125,31 +150,126 @@ export default function PortfolioTrackerPage() {
             <PerformanceChart snapshots={rows} />
           </div>
 
+          {/* ── Snapshots (compact summary list) ── */}
           <div className="glass-card overflow-hidden">
-            <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-white">Snapshot History</h2>
-                <p className="text-xs text-gray-500 mt-0.5">{rows.length} total snapshots</p>
-              </div>
+            <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60">
+              <h2 className="text-base font-semibold text-white">Snapshots</h2>
+              <p className="text-xs text-gray-500 mt-0.5">{rows.length} total snapshots</p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
-                <thead><tr><th>Date</th><th className="text-right">Gold</th><th className="text-right">Crypto</th><th className="text-right">MF</th><th className="text-right">IN Stocks</th><th className="text-right">US Stocks</th><th className="text-right">Total Invested</th><th className="text-right">Total Value</th><th className="text-right">Return %</th><th className="text-right">Profit</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th className="text-right">Total Invested</th>
+                    <th className="text-right">Total Value</th>
+                    <th className="text-right">Return %</th>
+                    <th className="text-right">Profit / Loss</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {paginatedSnapshots.map((s) => (
                     <tr key={s.id}>
                       <td className="font-medium text-white">{formatDate(s.snapshot_date)}</td>
-                      <td className="text-right text-yellow-400">{formatINR(s.gold_value ?? 0)}</td>
-                      <td className="text-right text-orange-400">{formatINR(s.crypto_value ?? 0)}</td>
-                      <td className="text-right text-violet-400">{formatINR(s.mf_value ?? 0)}</td>
-                      <td className="text-right text-emerald-400">{formatINR(s.in_stocks_value ?? 0)}</td>
-                      <td className="text-right text-blue-400">{formatINR(s.us_stocks_value ?? 0)}</td>
                       <td className="text-right text-gray-300">{formatINR(s.total_invested ?? 0)}</td>
                       <td className="text-right font-semibold text-white">{formatINR(s.total_value ?? 0)}</td>
-                      <td className={`text-right font-medium ${(s.total_return_pct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{(s.total_return_pct ?? 0).toFixed(2)}%</td>
-                      <td className={`text-right font-medium ${(s.profit ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{formatINR(s.profit ?? 0)}</td>
+                      <td className={`text-right font-medium ${(s.total_return_pct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {(s.total_return_pct ?? 0).toFixed(2)}%
+                      </td>
+                      <td className={`text-right font-medium ${(s.profit ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {formatINR(s.profit ?? 0)}
+                      </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+            <PaginationBar page={snapshotPage} totalPages={snapshotTotalPages} total={reversedRows.length} onPage={setSnapshotPage} />
+          </div>
+
+          {/* ── History — per-asset invested vs current value ── */}
+          <div className="glass-card overflow-hidden">
+            <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-800/60 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-white">History</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Invested vs current value for each asset class per snapshot</p>
+              </div>
+              <button
+                onClick={exportHistoryToXlsx}
+                disabled={reversedRows.length === 0}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors shrink-0"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Export XLSX
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="data-table text-xs">
+                <thead>
+                  <tr>
+                    {/* Date */}
+                    <th rowSpan={2} className="align-middle">Date</th>
+                    {/* Asset group headers */}
+                    <th colSpan={2} className="text-center text-yellow-400 border-b border-yellow-500/20">Gold</th>
+                    <th colSpan={2} className="text-center text-orange-400 border-b border-orange-500/20">Crypto</th>
+                    <th colSpan={2} className="text-center text-violet-400 border-b border-violet-500/20">Mutual Funds</th>
+                    <th colSpan={2} className="text-center text-emerald-400 border-b border-emerald-500/20">IN Stocks</th>
+                    <th colSpan={2} className="text-center text-blue-400 border-b border-blue-500/20">US Stocks</th>
+                    {/* Totals */}
+                    <th colSpan={2} className="text-center text-gray-300 border-b border-gray-600/40">Total</th>
+                    <th rowSpan={2} className="text-right align-middle">Return %</th>
+                    <th rowSpan={2} className="text-right align-middle">Profit / Loss</th>
+                  </tr>
+                  <tr>
+                    <th className="text-right text-yellow-500/70">Invested</th>
+                    <th className="text-right text-yellow-400">Current</th>
+                    <th className="text-right text-orange-500/70">Invested</th>
+                    <th className="text-right text-orange-400">Current</th>
+                    <th className="text-right text-violet-500/70">Invested</th>
+                    <th className="text-right text-violet-400">Current</th>
+                    <th className="text-right text-emerald-500/70">Invested</th>
+                    <th className="text-right text-emerald-400">Current</th>
+                    <th className="text-right text-blue-500/70">Invested</th>
+                    <th className="text-right text-blue-400">Current</th>
+                    <th className="text-right text-gray-400">Invested</th>
+                    <th className="text-right text-white">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedSnapshots.map((s) => {
+                    const profit = s.profit ?? 0;
+                    const returnPct = s.total_return_pct ?? 0;
+                    return (
+                      <tr key={`hist-${s.id}`}>
+                        <td className="font-medium text-white whitespace-nowrap">{formatDate(s.snapshot_date)}</td>
+                        {/* Gold */}
+                        <td className="text-right text-yellow-500/80">{formatINR(s.gold_invested ?? 0)}</td>
+                        <td className="text-right text-yellow-400">{formatINR(s.gold_value ?? 0)}</td>
+                        {/* Crypto */}
+                        <td className="text-right text-orange-500/80">{formatINR(s.crypto_invested ?? 0)}</td>
+                        <td className="text-right text-orange-400">{formatINR(s.crypto_value ?? 0)}</td>
+                        {/* MF */}
+                        <td className="text-right text-violet-500/80">{formatINR(s.mf_invested ?? 0)}</td>
+                        <td className="text-right text-violet-400">{formatINR(s.mf_value ?? 0)}</td>
+                        {/* IN Stocks */}
+                        <td className="text-right text-emerald-500/80">{formatINR(s.in_stocks_invested ?? 0)}</td>
+                        <td className="text-right text-emerald-400">{formatINR(s.in_stocks_value ?? 0)}</td>
+                        {/* US Stocks */}
+                        <td className="text-right text-blue-500/80">{formatINR(s.us_stocks_invested ?? 0)}</td>
+                        <td className="text-right text-blue-400">{formatINR(s.us_stocks_value ?? 0)}</td>
+                        {/* Totals */}
+                        <td className="text-right text-gray-300">{formatINR(s.total_invested ?? 0)}</td>
+                        <td className="text-right font-semibold text-white">{formatINR(s.total_value ?? 0)}</td>
+                        {/* Return & Profit */}
+                        <td className={`text-right font-medium ${returnPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                          {returnPct.toFixed(2)}%
+                        </td>
+                        <td className={`text-right font-medium ${profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                          {formatINR(profit)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

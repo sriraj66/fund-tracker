@@ -6,9 +6,10 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import { formatINR, formatDate } from "@/lib/utils";
 import StatCard from "@/components/StatCard";
-import { Wallet, TrendingDown, Receipt, BarChart2, Plus, ExternalLink, PiggyBank, ChevronLeft, ChevronRight } from "lucide-react";
+import { Wallet, TrendingDown, Receipt, BarChart2, Plus, ExternalLink, PiggyBank, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import ExpenseAddModal from "./ExpenseAddModal";
+import ExpenseEditModal from "./ExpenseEditModal";
 import CategoryManageModal from "./CategoryManageModal";
 import TagManageModal from "./TagManageModal";
 import ExpenseMonthlyStats from "./ExpenseMonthlyStats";
@@ -198,7 +199,7 @@ export default function ExpensesPage() {
   // All-time total
   const allTimeTotal = rows.reduce((s, r) => s + Number(r.amount), 0);
 
-  // Category breakdown for selected month
+  // Category breakdown for selected month (expenses only)
   const catMap = useMemo(() => {
     const m = new Map<string, { name: string; icon: string; color: string; total: number }>();
     for (const r of selectedMonthRows) {
@@ -248,7 +249,26 @@ export default function ExpensesPage() {
     [filteredRows, txPage]
   );
 
-  // Savings — filtered to selected month
+  // ── Investment rows — savings entries whose type === "Investment" ──────────
+  const INVESTMENT_TYPE = "Investment";
+
+  const selectedMonthInvestments = useMemo(
+    () => savings.filter(
+      (s) => s.date?.slice(0, 7) === selectedMonthKey && s.type === INVESTMENT_TYPE
+    ),
+    [savings, selectedMonthKey]
+  );
+  const selectedMonthInvestmentTotal = selectedMonthInvestments.reduce(
+    (s, r) => s + Number(r.amount), 0
+  );
+  const allTimeInvestmentTotal = savings
+    .filter((s) => s.type === INVESTMENT_TYPE)
+    .reduce((s, r) => s + Number(r.amount), 0);
+
+  // Grand total for category % — expenses + investment
+  const grandMonthTotal = selectedMonthTotal + selectedMonthInvestmentTotal;
+
+  // Savings — filtered to selected month (exclude Investment type in savings display)
   const selectedMonthSavings = useMemo(
     () => savings.filter((s) => s.date?.slice(0, 7) === selectedMonthKey),
     [savings, selectedMonthKey]
@@ -319,7 +339,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard
           title="Month Spent"
           value={formatINR(selectedMonthTotal)}
@@ -335,6 +355,14 @@ export default function ExpensesPage() {
           icon={TrendingDown}
           iconColor="text-orange-400"
           iconBg="bg-orange-500/10"
+        />
+        <StatCard
+          title="Month Invested"
+          value={formatINR(selectedMonthInvestmentTotal)}
+          subtitle={`${selectedMonthInvestments.length} entr${selectedMonthInvestments.length !== 1 ? "ies" : "y"} · All-time ${formatINR(allTimeInvestmentTotal)}`}
+          icon={TrendingUp}
+          iconColor="text-sky-400"
+          iconBg="bg-sky-500/10"
         />
         <StatCard
           title="Month Savings"
@@ -355,21 +383,52 @@ export default function ExpensesPage() {
       </div>
 
       {/* Monthly stats (bar chart + accordion) */}
-      {rows.length > 0 && <ExpenseMonthlyStats expenses={rows} onDeleted={fetchData} />}
+      {(rows.length > 0 || savings.length > 0) && (
+        <ExpenseMonthlyStats expenses={rows} savings={savings} onDeleted={fetchData} />
+      )}
 
-      {/* Category breakdown (this month) */}
-      {catMap.size > 0 && (
+      {/* Category breakdown (this month) — includes Investment row */}
+      {(catMap.size > 0 || selectedMonthInvestmentTotal > 0) && (
         <div className="glass-card p-4 md:p-6">
           <h2 className="text-base font-semibold text-white mb-4">
             Category Breakdown — {monthName}
           </h2>
           <div className="space-y-3">
+            {/* Investment row — always shown first when present */}
+            {selectedMonthInvestmentTotal > 0 && (
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1.5">
+                  <span className="inline-flex items-center gap-1.5 font-medium text-sky-400">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    Investment
+                    <span className="text-xs font-normal text-sky-500/70 ml-1">
+                      ({selectedMonthInvestments.length} entr{selectedMonthInvestments.length !== 1 ? "ies" : "y"})
+                    </span>
+                  </span>
+                  <span className="text-gray-300 font-medium">
+                    {formatINR(selectedMonthInvestmentTotal)}{" "}
+                    <span className="text-gray-500 font-normal">
+                      ({grandMonthTotal > 0 ? ((selectedMonthInvestmentTotal / grandMonthTotal) * 100).toFixed(1) : "0.0"}%)
+                    </span>
+                  </span>
+                </div>
+                <div className="w-full bg-gray-800 rounded-full h-1.5">
+                  <div
+                    className="h-1.5 rounded-full transition-all bg-sky-400"
+                    style={{ width: grandMonthTotal > 0 ? `${(selectedMonthInvestmentTotal / grandMonthTotal) * 100}%` : "0%" }}
+                  />
+                </div>
+
+              </div>
+            )}
+
+            {/* Expense categories */}
             {Array.from(catMap.values())
               .sort((a, b) => b.total - a.total)
               .map((cat) => {
                 const CatIcon = getCategoryIcon(cat.icon);
                 const color = getCategoryColor(cat.color);
-                const pct = selectedMonthTotal > 0 ? (cat.total / selectedMonthTotal) * 100 : 0;
+                const pct = grandMonthTotal > 0 ? (cat.total / grandMonthTotal) * 100 : 0;
                 return (
                   <div key={cat.name}>
                     <div className="flex items-center justify-between text-sm mb-1.5">
@@ -391,6 +450,14 @@ export default function ExpensesPage() {
                   </div>
                 );
               })}
+
+            {/* Grand total footer */}
+            {grandMonthTotal > 0 && (
+              <div className="pt-3 mt-1 border-t border-gray-800/60 flex items-center justify-between text-sm">
+                <span className="text-gray-400 font-medium">Total (Invested + Spent)</span>
+                <span className="text-white font-bold">{formatINR(grandMonthTotal)}</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -598,7 +665,10 @@ export default function ExpensesPage() {
                           </div>
                         )}
                       </div>
-                      <ExpenseDeleteButton id={e.id} onDeleted={fetchData} />
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <ExpenseEditModal expense={e} onUpdated={fetchData} />
+                        <ExpenseDeleteButton id={e.id} onDeleted={fetchData} />
+                      </div>
                     </div>
                   </div>
                 );
@@ -655,7 +725,10 @@ export default function ExpensesPage() {
                         <td className="text-right font-semibold text-rose-400">{formatINR(Number(e.amount))}</td>
                         <td className="text-gray-400 text-xs">{formatDate(e.date)}</td>
                         <td className="text-center">
-                          <ExpenseDeleteButton id={e.id} onDeleted={fetchData} />
+                          <div className="inline-flex items-center gap-1">
+                            <ExpenseEditModal expense={e} onUpdated={fetchData} />
+                            <ExpenseDeleteButton id={e.id} onDeleted={fetchData} />
+                          </div>
                         </td>
                       </tr>
                     );
