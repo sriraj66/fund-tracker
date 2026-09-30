@@ -7,14 +7,7 @@ export async function DELETE(request: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const db = getAdminFirestore();
-    const collections = [
-      "mf_transactions",
-      "stock_monthly_entries",
-      "us_stock_transactions",
-      "crypto_transactions",
-      "gold_transactions",
-      "portfolio_snapshots",
-    ];
+    const collections = ["portfolio_snapshots", "expenses"];
 
     let totalDeleted = 0;
     const errors: string[] = [];

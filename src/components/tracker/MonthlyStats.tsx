@@ -7,22 +7,16 @@ import {
   Tooltip, Legend, ResponsiveContainer, ReferenceLine,
   Cell,
 } from "recharts";
-import { formatINR } from "@/lib/utils";
-
-interface MonthlyEntry {
-  id:            string;
-  month:         string;
-  month_label:   string;
-  invested:      number;
-  current_value: number;
-  pnl:           number;
-  pnl_pct:       number;
-}
+import { type Currency, currencySymbol, moneyFmt } from "@/lib/trackerAnalytics";
+import type { MonthlyEntry } from "./MonthlyChange";
 
 interface Props {
-  entries:    MonthlyEntry[];
-  onDeleted?: () => void;
+  entries:   MonthlyEntry[];
+  label:     string;     // e.g. "stocks", used in the subtitle
+  currency?: Currency;
 }
+
+type Fmt = (n: number) => string;
 
 const TIME_FRAMES = [
   { label: "3M",  months: 3  },
@@ -34,11 +28,12 @@ const TIME_FRAMES = [
 type ChartTab = "value" | "pnl" | "investment";
 
 function CustomTooltip({
-  active, payload, label,
+  active, payload, label, fmt,
 }: {
   active?:  boolean;
   payload?: { name: string; value: number; color: string }[];
   label?:   string;
+  fmt:      Fmt;
 }) {
   if (!active || !payload?.length) return null;
   return (
@@ -47,7 +42,7 @@ function CustomTooltip({
       {payload.map((p) => (
         <div key={p.name} className="flex items-center justify-between gap-6">
           <span style={{ color: p.color }} className="font-medium">{p.name}</span>
-          <span className="text-gray-200">{formatINR(p.value)}</span>
+          <span className="text-gray-200">{fmt(p.value)}</span>
         </div>
       ))}
     </div>
@@ -55,11 +50,12 @@ function CustomTooltip({
 }
 
 function PnlTooltip({
-  active, payload, label,
+  active, payload, label, fmt,
 }: {
   active?:  boolean;
   payload?: { name: string; value: number; fill: string }[];
   label?:   string;
+  fmt:      Fmt;
 }) {
   if (!active || !payload?.length) return null;
   const val = payload[0]?.value ?? 0;
@@ -70,7 +66,7 @@ function PnlTooltip({
       <div className="flex justify-between gap-6">
         <span className="text-gray-400">P&amp;L</span>
         <span className={val >= 0 ? "text-emerald-400 font-medium" : "text-red-400 font-medium"}>
-          {val >= 0 ? "+" : ""}₹{Math.abs(val).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+          {val >= 0 ? "+" : ""}{fmt(Math.abs(val))}
         </span>
       </div>
       <div className="flex justify-between gap-6">
@@ -85,11 +81,12 @@ function PnlTooltip({
 
 /* ─── Monthly Investment Bar Tooltip ─────────────────────────────────────── */
 function InvestmentTooltip({
-  active, payload, label,
+  active, payload, label, fmt,
 }: {
   active?:  boolean;
   payload?: { name: string; value: number; fill: string }[];
   label?:   string;
+  fmt:      Fmt;
 }) {
   if (!active || !payload?.length) return null;
   const invested = payload.find((p) => p.name === "Invested")?.value ?? 0;
@@ -100,19 +97,22 @@ function InvestmentTooltip({
       <p className="text-white font-semibold mb-2">{label}</p>
       <div className="flex justify-between gap-6">
         <span className="text-gray-400">Invested</span>
-        <span className="text-gray-200 font-medium">{formatINR(invested)}</span>
+        <span className="text-gray-200 font-medium">{fmt(invested)}</span>
       </div>
       <div className="flex justify-between gap-6 mt-1">
         <span className="text-gray-400">Added this month</span>
         <span className={`font-medium ${pos ? "text-emerald-400" : "text-red-400"}`}>
-          {pos ? "+" : ""}{formatINR(Math.abs(delta))}
+          {pos ? "+" : ""}{fmt(Math.abs(delta))}
         </span>
       </div>
     </div>
   );
 }
 
-export default function StockMonthlyStats({ entries }: Props) {
+export default function MonthlyStats({ entries, label, currency = "INR" }: Props) {
+  const fmt = moneyFmt(currency);
+  const sym = currencySymbol(currency);
+  const r = (n: number) => (currency === "USD" ? Math.round(n * 100) / 100 : Math.round(n));
   const [timeFrame, setTimeFrame] = useState("6M");
   const [tab,       setTab]       = useState<ChartTab>("investment");
 
@@ -127,19 +127,19 @@ export default function StockMonthlyStats({ entries }: Props) {
 
   const chartData = sliced.map((e) => ({
     month:         e.month_label,
-    Invested:      Math.round(Number(e.invested)),
-    "Current":     Math.round(Number(e.current_value)),
-    "P&L":         Math.round(Number(e.pnl)),
+    Invested:      r(Number(e.invested)),
+    "Current":     r(Number(e.current_value)),
+    "P&L":         r(Number(e.pnl)),
     "Return %":    Number(e.pnl_pct),
   }));
 
   // Monthly investment bar chart — how much was added each month
   const investmentData = sliced.map((e, i, arr) => {
     const prev  = i > 0 ? Number(arr[i - 1].invested) : Number(e.invested);
-    const delta = i > 0 ? Math.round(Number(e.invested) - prev) : 0;
+    const delta = i > 0 ? r(Number(e.invested) - prev) : 0;
     return {
       month:            e.month_label,
-      Invested:         Math.round(Number(e.invested)),
+      Invested:         r(Number(e.invested)),
       "Monthly Change": delta,
     };
   });
@@ -161,7 +161,7 @@ export default function StockMonthlyStats({ entries }: Props) {
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
             {tab === "investment"
-              ? "How much you invested in stocks each month"
+              ? `How much you invested in ${label} each month`
               : tab === "value"
               ? "Invested vs. current value over time"
               : "Unrealised P&L over time"}
@@ -215,11 +215,11 @@ export default function StockMonthlyStats({ entries }: Props) {
           <div>
             <p className={`font-semibold ${latestDelta >= 0 ? "text-emerald-300" : "text-red-300"}`}>
               {latestDelta >= 0 ? "+" : ""}
-              {formatINR(Math.abs(latestDelta))} invested this month
+              {fmt(Math.abs(latestDelta))} invested this month
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
               {sliced[sliced.length - 1].month_label} vs {sliced[sliced.length - 2].month_label}
-              {" — "}Total invested: {formatINR(Number(sliced[sliced.length - 1].invested))}
+              {" — "}Total invested: {fmt(Number(sliced[sliced.length - 1].invested))}
             </p>
           </div>
         </div>
@@ -242,10 +242,10 @@ export default function StockMonthlyStats({ entries }: Props) {
                 tick={{ fill: "#9ca3af", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                tickFormatter={(v) => `${sym}${(v / 1000).toFixed(0)}k`}
                 width={44}
               />
-              <Tooltip content={<InvestmentTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+              <Tooltip content={<InvestmentTooltip fmt={fmt} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
               <ReferenceLine y={0} stroke="#374151" />
               {/* Cumulative invested — area line in background */}
               <Bar dataKey="Invested" fill="#1d4ed8" opacity={0.18} radius={[3,3,0,0]} maxBarSize={36} />
@@ -289,10 +289,10 @@ export default function StockMonthlyStats({ entries }: Props) {
                 tick={{ fill: "#9ca3af", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                tickFormatter={(v) => `${sym}${(v / 1000).toFixed(0)}k`}
                 width={44}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip fmt={fmt} />} />
               <Legend
                 formatter={(v) => <span className="text-xs text-gray-400">{v}</span>}
                 wrapperStyle={{ paddingTop: "12px" }}
@@ -330,10 +330,10 @@ export default function StockMonthlyStats({ entries }: Props) {
                 tick={{ fill: "#9ca3af", fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                tickFormatter={(v) => `${sym}${(v / 1000).toFixed(0)}k`}
                 width={44}
               />
-              <Tooltip content={<PnlTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+              <Tooltip content={<PnlTooltip fmt={fmt} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
               <ReferenceLine y={0} stroke="#374151" />
               <Bar
                 dataKey="P&L"

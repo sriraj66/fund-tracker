@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
@@ -50,8 +51,8 @@ export default function GoldAddHoldingModal({ onAdded }: Props) {
       <button onClick={() => setOpen(true)} className="btn-secondary">
         <Plus className="w-4 h-4" />Add Holding
       </button>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:p-4">
+      {open && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <div className="relative w-full sm:max-w-lg bg-gray-900/95 backdrop-blur-sm border border-gray-800/60 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 shadow-2xl max-h-[88vh] overflow-y-auto overscroll-contain">
             <div className="w-10 h-1 bg-gray-600 rounded-full mx-auto mb-4 sm:hidden" />
@@ -95,7 +96,8 @@ export default function GoldAddHoldingModal({ onAdded }: Props) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

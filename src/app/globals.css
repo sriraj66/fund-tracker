@@ -165,12 +165,28 @@ body {
   @apply hidden md:table-cell;
 }
 
-/* ── Date / datetime inputs: never overflow their container ── */
+/* ── Date / datetime inputs: never overflow their container ──
+   Mobile browsers (iOS Safari especially) give native date inputs an intrinsic
+   width that ignores width/min-width; dropping the native appearance fixes it. */
 input[type="date"],
+input[type="month"],
 input[type="datetime-local"],
 input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
   max-width: 100%;
   min-width: 0;
+}
+.form-input[type="date"],
+.form-input[type="month"],
+.form-input[type="datetime-local"],
+.form-input[type="time"] {
+  display: block;
+  width: 100%;
+  min-height: 2.375rem; /* iOS collapses the height of an empty, appearance-less date input */
+}
+.form-input::-webkit-date-and-time-value {
+  text-align: left; /* iOS centres the value by default */
 }
 
 /* ── Hide scrollbar while keeping scrollability ── */

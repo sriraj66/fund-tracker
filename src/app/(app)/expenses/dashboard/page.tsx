@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import { formatINR } from "@/lib/utils";
 import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   LineChart, Line, ReferenceLine,
   ComposedChart, Area,
@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getCategoryColor, getCategoryIcon } from "../CategoryManageModal";
+import FullscreenChartCard from "@/components/FullscreenChartCard";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface ExpenseRow {
@@ -175,7 +176,14 @@ export default function ExpenseDashboardPage() {
   const [savings, setSavings]     = useState<SavingsRow[]>([]);
   const [categories, setCategories] = useState<CategoryDoc[]>([]);
   const [loading, setLoading]     = useState(true);
+  const [hiddenCats, setHiddenCats] = useState<Set<string>>(new Set());
 
+  const toggleCat = (name: string) =>
+    setHiddenCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
   useEffect(() => {
     if (!user) return;
     const fetchAll = async () => {
@@ -335,7 +343,6 @@ export default function ExpenseDashboardPage() {
   const expMoM        = prevMonthTotal > 0 ? ((thisMonthTotal - prevMonthTotal) / prevMonthTotal) * 100 : 0;
   const invMoM        = prevMonthInvTotal > 0 ? ((thisMonthInvTotal - prevMonthInvTotal) / prevMonthInvTotal) * 100 : 0;
   const topCat        = catTotals[0];
-  const budgetHealth  = budgetCats.length > 0 ? budgetCats.filter((c) => !c.over).length / budgetCats.length * 100 : 100;
   const overBudgetCount = budgetCats.filter((c) => c.over).length;
 
   // Spending streak — consecutive days with ≥1 expense
@@ -450,13 +457,6 @@ export default function ExpenseDashboardPage() {
           icon={ShoppingBag} iconColor="text-violet-400" iconBg="bg-violet-500/10"
         />
         <MiniCard
-          label="Budget Health"
-          value={budgetCats.length === 0 ? "N/A" : `${budgetHealth.toFixed(0)}%`}
-          sub={budgetCats.length === 0 ? "No budgets set" : overBudgetCount > 0 ? `${overBudgetCount} over budget` : "All within budget"}
-          trend={overBudgetCount > 0 ? "up" : "neutral"}
-          icon={Target} iconColor="text-amber-400" iconBg="bg-amber-500/10"
-        />
-        <MiniCard
           label="Spend Streak"
           value={`${spendingStreak} day${spendingStreak !== 1 ? "s" : ""}`}
           sub="Consecutive days with expenses"
@@ -484,25 +484,40 @@ export default function ExpenseDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
             {/* Category donut */}
-            <div className="glass-card p-4 md:p-6">
-              <SectionHeader title={`Spending by Category — ${monthName}`} />
+            <div className="space-y-4 md:space-y-6 min-w-0">
               {catTotals.length === 0 ? (
-                <p className="text-gray-500 text-sm text-center py-10">No expenses this month.</p>
+                <div className="glass-card p-4 md:p-6">
+                  <SectionHeader title={`Spending by Category — ${monthName}`} />
+                  <p className="text-gray-500 text-sm text-center py-10">No expenses this month.</p>
+                </div>
               ) : (
                 <>
-                  <div className="h-56">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <FullscreenChartCard title={`Spending by Category — ${monthName}`} heightClass="h-64 sm:h-72">
+                    {(big) => (
                       <PieChart>
-                        <Pie data={catTotals} dataKey="total" nameKey="name" cx="50%" cy="50%" innerRadius={52} outerRadius={88} paddingAngle={2}>
-                          {catTotals.map((_, idx) => <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />)}
+                        <Pie data={catTotals.filter((c) => !hiddenCats.has(c.name))} dataKey="total" nameKey="name" cx="50%" cy="45%" innerRadius={big ? "45%" : "50%"} outerRadius={big ? "70%" : "72%"} paddingAngle={2}>
+                          {catTotals.map((c, idx) => hiddenCats.has(c.name) ? null : <Cell key={c.name} fill={PIE_COLORS[idx % PIE_COLORS.length]} />)}
                         </Pie>
                         <Tooltip content={<PieTooltip />} />
-                        <Legend formatter={(v) => <span className="text-xs text-gray-400">{v}</span>} iconType="circle" iconSize={8} />
+                        <Legend
+                          iconType="circle"
+                          iconSize={8}
+                          payload={catTotals.map((c, idx) => ({
+                            value: c.name,
+                            type: "circle" as const,
+                            color: hiddenCats.has(c.name) ? "#4b5563" : PIE_COLORS[idx % PIE_COLORS.length],
+                          }))}
+                          onClick={(e) => toggleCat(String(e.value))}
+                          formatter={(v) => (
+                            <span className={`text-xs cursor-pointer select-none ${hiddenCats.has(String(v)) ? "text-gray-600 line-through" : "text-gray-400 hover:text-gray-200"}`}>{v}</span>
+                          )}
+                          wrapperStyle={{ maxHeight: big ? 120 : 64, overflowY: "auto", cursor: "pointer" }}
+                        />
                       </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                    )}
+                  </FullscreenChartCard>
                   {/* Category table */}
-                  <div className="mt-4 space-y-2">
+                  <div className="glass-card p-4 md:p-6 space-y-2">
                     {catTotals.slice(0, 5).map((c, idx) => {
                       const pct = thisMonthTotal > 0 ? (c.total / thisMonthTotal) * 100 : 0;
                       const CatIcon = getCategoryIcon(c.icon);
@@ -531,55 +546,55 @@ export default function ExpenseDashboardPage() {
             </div>
 
             {/* Daily spending bar with cumulative line */}
-            <div className="glass-card p-4 md:p-6">
-              <SectionHeader title={`Daily Spending — ${monthName}`} sub="Bars = daily spend · Line = cumulative" />
-              {dailyData.every((d) => d.Spent === 0) ? (
+            {dailyData.every((d) => d.Spent === 0) ? (
+              <div className="glass-card p-4 md:p-6">
+                <SectionHeader title={`Daily Spending — ${monthName}`} sub="Bars = daily spend · Line = cumulative" />
                 <p className="text-gray-500 text-sm text-center py-10">No expenses this month.</p>
-              ) : (
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={dailyData} barCategoryGap="20%">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                      <XAxis dataKey="day" tick={{ fill: "#9ca3af", fontSize: 10 }} axisLine={false} tickLine={false} interval={4} />
-                      <YAxis yAxisId="left"  tick={{ fill: "#9ca3af", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={44} />
-                      <YAxis yAxisId="right" orientation="right" tick={{ fill: "#9ca3af", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={44} />
-                      <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                      <Bar    yAxisId="left"  dataKey="Spent"      fill="#f43f5e" radius={[3, 3, 0, 0]} maxBarSize={18} />
-                      <Line  yAxisId="right" dataKey="Cumulative" stroke="#fb923c" strokeWidth={1.5} dot={false} type="monotone" />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <FullscreenChartCard title={`Daily Spending — ${monthName}`} subtitle="Bars = daily spend · Line = cumulative" heightClass="h-64" fill>
+                {(big) => (
+                  <ComposedChart data={dailyData} barCategoryGap="20%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                    <XAxis dataKey="day" tick={{ fill: "#9ca3af", fontSize: big ? 12 : 10 }} axisLine={false} tickLine={false} interval={big ? 1 : "preserveStartEnd"} minTickGap={big ? 8 : 16} />
+                    <YAxis yAxisId="left"  tick={{ fill: "#9ca3af", fontSize: big ? 12 : 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={big ? 52 : 38} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fill: "#9ca3af", fontSize: big ? 12 : 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={big ? 52 : 38} />
+                    <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                    <Bar    yAxisId="left"  dataKey="Spent"      fill="#f43f5e" radius={[3, 3, 0, 0]} maxBarSize={big ? 28 : 18} />
+                    <Line  yAxisId="right" dataKey="Cumulative" stroke="#fb923c" strokeWidth={1.5} dot={false} type="monotone" />
+                  </ComposedChart>
+                )}
+              </FullscreenChartCard>
+            )}
           </div>
 
           {/* ── Row 2: 6-month trend + Payment methods ───────────────────────── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
             {/* Spent vs Invested 6-month trend */}
-            <div className="glass-card p-4 md:p-6">
-              <SectionHeader title="6-Month Spent vs Invested" sub="Compare your spending and investment patterns" />
-              {sixMonthTrend.every((d) => d.Spent === 0 && d.Invested === 0) ? (
+            {sixMonthTrend.every((d) => d.Spent === 0 && d.Invested === 0) ? (
+              <div className="glass-card p-4 md:p-6">
+                <SectionHeader title="6-Month Spent vs Invested" sub="Compare your spending and investment patterns" />
                 <p className="text-gray-500 text-sm text-center py-10">Not enough data.</p>
-              ) : (
-                <div className="h-56">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={sixMonthTrend}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                      <XAxis dataKey="month" tick={{ fill: "#9ca3af", fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={44} />
-                      <Tooltip content={<LineTooltip />} />
-                      <Legend formatter={(v) => <span className="text-xs text-gray-400">{v}</span>} iconType="circle" iconSize={8} />
-                      <Line type="monotone" dataKey="Spent"    stroke="#f43f5e" strokeWidth={2} dot={{ fill: "#f43f5e", r: 3 }}    activeDot={{ r: 5 }} />
-                      <Line type="monotone" dataKey="Invested" stroke="#38bdf8" strokeWidth={2} dot={{ fill: "#38bdf8", r: 3 }} activeDot={{ r: 5 }} strokeDasharray="5 3" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <FullscreenChartCard title="6-Month Spent vs Invested" subtitle="Compare your spending and investment patterns" heightClass="h-56 sm:h-64">
+                {(big) => (
+                  <LineChart data={sixMonthTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fill: "#9ca3af", fontSize: big ? 12 : 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                    <YAxis tick={{ fill: "#9ca3af", fontSize: big ? 12 : 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={big ? 52 : 40} />
+                    <Tooltip content={<LineTooltip />} />
+                    <Legend formatter={(v) => <span className="text-xs text-gray-400">{v}</span>} iconType="circle" iconSize={8} />
+                    <Line type="monotone" dataKey="Spent"    stroke="#f43f5e" strokeWidth={2} dot={{ fill: "#f43f5e", r: 3 }} activeDot={{ r: 5 }} />
+                    <Line type="monotone" dataKey="Invested" stroke="#38bdf8" strokeWidth={2} dot={{ fill: "#38bdf8", r: 3 }} activeDot={{ r: 5 }} strokeDasharray="5 3" />
+                  </LineChart>
+                )}
+              </FullscreenChartCard>
+            )}
 
             {/* Payment methods */}
-            <div className="glass-card p-4 md:p-6">
+            <div className="glass-card p-4 md:p-6 min-w-0">
               <SectionHeader title={`Payment Methods — ${monthName}`} />
               {paymentData.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-10">No expenses this month.</p>
@@ -613,29 +628,29 @@ export default function ExpenseDashboardPage() {
             </div>
           </div>
 
-          {/* ── Row 3: Investment breakdown + Budget tracker ──────────────────── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          {/* ── Row 3: Investment breakdown ──────────────────────────────────── */}
+          <div className={`grid grid-cols-1 gap-4 md:gap-6 ${thisMonthInvTotal > 0 && invBreakdown.length > 1 ? "md:grid-cols-2" : ""}`}>
+
+            {thisMonthInvTotal > 0 && invBreakdown.length > 1 && (
+              <FullscreenChartCard title={`Investment Split — ${monthName}`} subtitle="Where your investment money went" heightClass="h-56 sm:h-64">
+                {(big) => (
+                  <PieChart>
+                    <Pie data={invBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={big ? "45%" : "50%"} outerRadius={big ? "75%" : "80%"} paddingAngle={2}>
+                      {invBreakdown.map((d, idx) => <Cell key={idx} fill={d.color} />)}
+                    </Pie>
+                    <Tooltip content={<PieTooltip />} />
+                  </PieChart>
+                )}
+              </FullscreenChartCard>
+            )}
 
             {/* Investment breakdown */}
-            <div className="glass-card p-4 md:p-6">
+            <div className="glass-card p-4 md:p-6 min-w-0">
               <SectionHeader title={`Investments — ${monthName}`} sub="Where your investment money went" />
               {thisMonthInvTotal === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-10">No investments logged this month.</p>
               ) : (
                 <>
-                  {/* Donut */}
-                  {invBreakdown.length > 1 && (
-                    <div className="h-44 mb-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={invBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2}>
-                            {invBreakdown.map((d, idx) => <Cell key={idx} fill={d.color} />)}
-                          </Pie>
-                          <Tooltip content={<PieTooltip />} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
                   {/* Rows */}
                   <div className="space-y-3">
                     {invBreakdown.map((d) => {
@@ -673,57 +688,6 @@ export default function ExpenseDashboardPage() {
                     ))}
                   </div>
                 </>
-              )}
-            </div>
-
-            {/* Budget tracker */}
-            <div className="glass-card p-4 md:p-6">
-              <SectionHeader title={`Budget Tracker — ${monthName}`} sub="Spending vs budget limits" />
-              {budgetCats.length === 0 ? (
-                <div className="text-center py-10">
-                  <p className="text-gray-500 text-sm">No budgets set yet.</p>
-                  <Link href="/expenses" className="text-xs text-violet-400 hover:text-violet-300 mt-1 inline-block">Set category budgets →</Link>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Summary pills */}
-                  <div className="flex gap-2 flex-wrap">
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium">
-                      {budgetCats.filter((c) => !c.over).length} under budget
-                    </span>
-                    {overBudgetCount > 0 && (
-                      <span className="px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium">
-                        {overBudgetCount} over budget
-                      </span>
-                    )}
-                  </div>
-                  {budgetCats.map((cat) => {
-                    const CatIcon = getCategoryIcon(cat.icon);
-                    const color   = getCategoryColor(cat.color);
-                    return (
-                      <div key={cat.id}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${color.text}`}>
-                            <CatIcon className="w-3.5 h-3.5" />
-                            {cat.name}
-                          </span>
-                          <div className="text-xs text-right">
-                            <span className={`font-semibold ${cat.over ? "text-red-400" : "text-gray-200"}`}>{formatINR(cat.spent)}</span>
-                            <span className="text-gray-600"> / {formatINR(cat.budget_limit ?? 0)}</span>
-                          </div>
-                        </div>
-                        <div className="w-full bg-gray-800 rounded-full h-2">
-                          <div className={`h-2 rounded-full transition-all ${cat.over ? "bg-red-500" : color.dot}`} style={{ width: `${cat.pct}%` }} />
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-600 mt-0.5">
-                          <span>{cat.pct.toFixed(0)}% used</span>
-                          {!cat.over && <span>{formatINR(cat.remaining)} left</span>}
-                          {cat.over && <span className="text-red-400 font-medium">Over by {formatINR(cat.spent - (cat.budget_limit ?? 0))}</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               )}
             </div>
           </div>
@@ -795,25 +759,22 @@ export default function ExpenseDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
             {/* Spent vs Invested bar chart */}
-            <div className="glass-card p-4 md:p-6">
-              <SectionHeader title="Spent vs Invested" sub="Monthly comparison — last 6 months" />
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sixMonthTrend} barGap={4} barCategoryGap="25%">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fill: "#9ca3af", fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={44} />
-                    <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                    <Legend formatter={(v) => <span className="text-xs text-gray-400">{v}</span>} iconType="circle" iconSize={8} />
-                    <Bar dataKey="Spent"    fill="#f43f5e" radius={[3, 3, 0, 0]} maxBarSize={20} />
-                    <Bar dataKey="Invested" fill="#38bdf8" radius={[3, 3, 0, 0]} maxBarSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            <FullscreenChartCard title="Spent vs Invested" subtitle="Monthly comparison — last 6 months" heightClass="h-56 sm:h-64">
+              {(big) => (
+                <BarChart data={sixMonthTrend} barGap={4} barCategoryGap="25%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fill: "#9ca3af", fontSize: big ? 12 : 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                  <YAxis tick={{ fill: "#9ca3af", fontSize: big ? 12 : 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} width={big ? 52 : 40} />
+                  <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                  <Legend formatter={(v) => <span className="text-xs text-gray-400">{v}</span>} iconType="circle" iconSize={8} />
+                  <Bar dataKey="Spent"    fill="#f43f5e" radius={[3, 3, 0, 0]} maxBarSize={big ? 40 : 20} />
+                  <Bar dataKey="Invested" fill="#38bdf8" radius={[3, 3, 0, 0]} maxBarSize={big ? 40 : 20} />
+                </BarChart>
+              )}
+            </FullscreenChartCard>
 
             {/* Smart Insights */}
-            <div className="glass-card p-4 md:p-6">
+            <div className="glass-card p-4 md:p-6 min-w-0">
               <SectionHeader title="Smart Insights" sub="Personalised observations from your data" />
               {insights.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-10">Add more data to get personalised insights.</p>

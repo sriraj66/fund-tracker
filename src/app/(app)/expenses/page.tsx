@@ -16,6 +16,7 @@ import ExpenseMonthlyStats from "./ExpenseMonthlyStats";
 import { getCategoryColor, getCategoryIcon } from "./CategoryManageModal";
 import { getTagColor } from "./TagManageModal";
 import SavingsAddModal, { type SavingsRow } from "./SavingsAddModal";
+import SavingsEditModal from "./SavingsEditModal";
 
 interface ExpenseRow {
   id: string;
@@ -85,16 +86,18 @@ function PaginationBar({
 }
 
 // ─── Inline delete button (Firebase direct) ────────────────────────────────
-function ExpenseDeleteButton({ id, onDeleted }: { id: string; onDeleted?: () => void }) {
+function ExpenseDeleteButton({
+  id, onDeleted, collectionName = "expenses", label = "expense",
+}: { id: string; onDeleted?: () => void; collectionName?: string; label?: string }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
     if (!user) return;
-    if (!window.confirm("Delete this expense? This cannot be undone.")) return;
+    if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) return;
     setLoading(true);
     try {
-      await deleteDoc(doc(db, "users", user.uid, "expenses", id));
+      await deleteDoc(doc(db, "users", user.uid, collectionName, id));
       onDeleted?.();
     } catch (err) {
       alert(`Delete failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -108,7 +111,7 @@ function ExpenseDeleteButton({ id, onDeleted }: { id: string; onDeleted?: () => 
       onClick={handleDelete}
       disabled={loading}
       className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
-      title="Delete expense"
+      title={`Delete ${label}`}
     >
       {loading ? (
         <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -288,6 +291,10 @@ export default function ExpensesPage() {
   );
 
   const monthName = monthLabel(selectedMonthKey);
+  const nextMonthKey = shiftMonth(selectedMonthKey, 1);
+  const hasNextMonthData =
+    rows.some((r) => r.date?.slice(0, 7) === nextMonthKey) ||
+    savings.some((s) => s.date?.slice(0, 7) === nextMonthKey);
 
   return (
     <div className="space-y-6 pb-6 sm:space-y-8">
@@ -330,7 +337,7 @@ export default function ExpensesPage() {
         </div>
         <button
           onClick={() => goMonth(1)}
-          disabled={isCurrentMonth}
+          disabled={!hasNextMonthData}
           className="p-2 rounded-xl bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           aria-label="Next month"
         >
@@ -501,6 +508,10 @@ export default function ExpensesPage() {
                         <span className="text-gray-500 text-xs">{formatDate(s.date)}</span>
                       </div>
                     </div>
+                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                      <SavingsEditModal saving={s} onUpdated={fetchData} />
+                      <ExpenseDeleteButton id={s.id} collectionName="savings" label="saving" onDeleted={fetchData} />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -515,6 +526,7 @@ export default function ExpensesPage() {
                     <th>Description</th>
                     <th className="text-right">Amount</th>
                     <th>Date</th>
+                    <th className="text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -529,6 +541,12 @@ export default function ExpensesPage() {
                       <td className="font-medium text-gray-200 max-w-[220px] truncate">{s.description}</td>
                       <td className="text-right font-semibold text-emerald-400">{formatINR(Number(s.amount))}</td>
                       <td className="text-gray-400 text-xs">{formatDate(s.date)}</td>
+                      <td>
+                        <div className="flex items-center justify-center gap-1">
+                          <SavingsEditModal saving={s} onUpdated={fetchData} />
+                          <ExpenseDeleteButton id={s.id} collectionName="savings" label="saving" onDeleted={fetchData} />
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -538,7 +556,7 @@ export default function ExpensesPage() {
             <PaginationBar
               page={savPage}
               totalPages={savTotalPages}
-              total={savings.length}
+              total={selectedMonthSavings.length}
               pageSize={PAGE_SIZE}
               label="savings"
               onPage={setSavPage}

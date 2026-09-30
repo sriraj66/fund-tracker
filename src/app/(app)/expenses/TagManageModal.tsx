@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { collection, addDoc, deleteDoc, doc, getDocs, query, orderBy, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
@@ -181,10 +182,10 @@ export default function TagManageModal({ onChanged }: Props) {
         Tags
       </button>
 
-      {open && (
+      {open && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
-          <div className="relative glass-card w-full max-w-lg shadow-2xl max-h-[85vh] flex flex-col">
+          <div className="relative bg-gray-900/95 backdrop-blur-sm border border-gray-800/60 rounded-2xl w-full max-w-lg shadow-2xl max-h-[85vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800/60">
               <div>
@@ -376,7 +377,8 @@ export default function TagManageModal({ onChanged }: Props) {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

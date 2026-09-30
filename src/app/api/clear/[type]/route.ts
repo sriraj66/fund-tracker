@@ -4,12 +4,8 @@ import { verifyIdToken, getAdminFirestore } from "@/lib/firebase/admin";
 type RouteParams = { params: Promise<{ type: string }> };
 
 const typeToCollection: Record<string, string> = {
-  mf: "mf_transactions",
-  stocks: "stock_monthly_entries",
-  "us-stocks": "us_stock_transactions",
-  crypto: "crypto_transactions",
-  gold: "gold_transactions",
   snapshots: "portfolio_snapshots",
+  expenses: "expenses",
 };
 
 export async function DELETE(request: NextRequest, props: RouteParams) {

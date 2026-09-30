@@ -11,16 +11,11 @@ import DefaultViewSetting from "./DefaultViewSetting";
 import FontSizeSetting from "./FontSizeSetting";
 
 interface Counts {
-  mf: number; mfHoldings: number;
-  stocks: number; stockHoldings: number;
-  usStocks: number; usHoldings: number;
-  crypto: number; cryptoHoldings: number;
-  gold: number; goldHoldings: number;
-  expenses: number;
   snapshots: number;
+  expenses: number;
 }
 
-const ZERO: Counts = { mf: 0, mfHoldings: 0, stocks: 0, stockHoldings: 0, usStocks: 0, usHoldings: 0, crypto: 0, cryptoHoldings: 0, gold: 0, goldHoldings: 0, expenses: 0, snapshots: 0 };
+const ZERO: Counts = { snapshots: 0, expenses: 0 };
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -35,40 +30,18 @@ export default function SettingsPage() {
       const safe = (col: string) =>
         getDocs(collection(db, "users", uid, col)).catch(() => ({ size: 0 }));
 
-      const [
-        mf, mfH, stocks, stockH, us, usH,
-        crypto, cryptoH, gold, goldH, expenses, snap,
-      ] = await Promise.all([
-        safe("mf_transactions"),   safe("mf_holdings"),
-        safe("stock_monthly_entries"), safe("stock_holdings"),
-        safe("us_stock_transactions"), safe("us_stock_holdings"),
-        safe("crypto_transactions"), safe("crypto_holdings"),
-        safe("gold_transactions"),  safe("gold_holdings"),
-        safe("expenses"),
+      const [snap, expenses] = await Promise.all([
         safe("portfolio_snapshots"),
+        safe("expenses"),
       ]);
 
-      setCounts({
-        mf: mf.size,         mfHoldings: mfH.size,
-        stocks: stocks.size,  stockHoldings: stockH.size,
-        usStocks: us.size,    usHoldings: usH.size,
-        crypto: crypto.size,  cryptoHoldings: cryptoH.size,
-        gold: gold.size,      goldHoldings: goldH.size,
-        expenses: expenses.size,
-        snapshots: snap.size,
-      });
+      setCounts({ snapshots: snap.size, expenses: expenses.size });
     } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchCounts(); }, [user]);
 
-  const totalCount =
-    counts.mf + counts.mfHoldings +
-    counts.stocks + counts.stockHoldings +
-    counts.usStocks + counts.usHoldings +
-    counts.crypto + counts.cryptoHoldings +
-    counts.gold + counts.goldHoldings +
-    counts.expenses + counts.snapshots;
+  const totalCount = counts.snapshots + counts.expenses;
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" /></div>;
 

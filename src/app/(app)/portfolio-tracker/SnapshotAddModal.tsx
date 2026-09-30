@@ -156,7 +156,7 @@ export default function SnapshotAddModal({ onAdded }: Props) {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Date + Sync row */}
               <div className="flex items-end gap-3">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <label className="form-label">Snapshot Date *</label>
                   <input type="date" name="snapshot_date" className="form-input min-w-0" value={form.snapshot_date} onChange={handleChange} required />
                 </div>
