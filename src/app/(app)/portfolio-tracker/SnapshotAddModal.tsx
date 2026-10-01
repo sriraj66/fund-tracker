@@ -2,15 +2,29 @@
 
 import { useState } from "react";
 import { useScrollLock } from "@/hooks/useScrollLock";
-import { collection, addDoc, getDocs } from "firebase/firestore";
+import { collection, addDoc, getDocs, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
-import { Plus, X, Loader2, RefreshCw, CheckCircle } from "lucide-react";
+import { Plus, X, Loader2, RefreshCw, CheckCircle, Pencil } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 
-interface Props { onAdded?: () => void; }
+const EMPTY_FIELDS = {
+  gold_invested: "", gold_value: "",
+  crypto_invested: "", crypto_value: "",
+  mf_invested: "", mf_value: "",
+  in_stocks_invested: "", in_stocks_value: "",
+  us_stocks_invested: "", us_stocks_value: "",
+  total_invested: "", total_value: "",
+};
+type FieldKey = keyof typeof EMPTY_FIELDS;
 
-export default function SnapshotAddModal({ onAdded }: Props) {
+interface Props {
+  onAdded?: () => void;
+  snapshot?: { id: string; snapshot_date: string } & Partial<Record<FieldKey, number>>; // edit mode when set
+}
+
+export default function SnapshotAddModal({ onAdded, snapshot }: Props) {
+  const isEdit = !!snapshot;
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,15 +35,17 @@ export default function SnapshotAddModal({ onAdded }: Props) {
   useScrollLock(open);
 
   const today = new Date().toISOString().slice(0, 10);
-  const [form, setForm] = useState({
-    snapshot_date: today,
-    gold_invested: "", gold_value: "",
-    crypto_invested: "", crypto_value: "",
-    mf_invested: "", mf_value: "",
-    in_stocks_invested: "", in_stocks_value: "",
-    us_stocks_invested: "", us_stocks_value: "",
-    total_invested: "", total_value: "",
-  });
+  const [form, setForm] = useState({ snapshot_date: today, ...EMPTY_FIELDS });
+
+  const openModal = () => {
+    if (snapshot) {
+      const fields = Object.fromEntries(
+        (Object.keys(EMPTY_FIELDS) as FieldKey[]).map((k) => [k, snapshot[k] == null ? "" : String(snapshot[k])]),
+      ) as typeof EMPTY_FIELDS;
+      setForm({ snapshot_date: snapshot.snapshot_date, ...fields });
+    }
+    setOpen(true);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -101,7 +117,7 @@ export default function SnapshotAddModal({ onAdded }: Props) {
   };
 
   const resetForm = () => {
-    setForm({ snapshot_date: today, gold_invested: "", gold_value: "", crypto_invested: "", crypto_value: "", mf_invested: "", mf_value: "", in_stocks_invested: "", in_stocks_value: "", us_stocks_invested: "", us_stocks_value: "", total_invested: "", total_value: "" });
+    setForm({ snapshot_date: today, ...EMPTY_FIELDS });
     setSynced(false);
     setError("");
   };
@@ -117,7 +133,7 @@ export default function SnapshotAddModal({ onAdded }: Props) {
       const profit = totalVal - totalInv;
       const ret = (inv: number, val: number) => inv > 0 ? ((val - inv) / inv) * 100 : 0;
 
-      await addDoc(collection(db, "users", user.uid, "portfolio_snapshots"), {
+      const data = {
         snapshot_date: form.snapshot_date,
         gold_invested: n(form.gold_invested), gold_value: n(form.gold_value), gold_return_pct: ret(n(form.gold_invested), n(form.gold_value)),
         crypto_invested: n(form.crypto_invested), crypto_value: n(form.crypto_value), crypto_return_pct: ret(n(form.crypto_invested), n(form.crypto_value)),
@@ -125,8 +141,12 @@ export default function SnapshotAddModal({ onAdded }: Props) {
         in_stocks_invested: n(form.in_stocks_invested), in_stocks_value: n(form.in_stocks_value), in_stocks_return_pct: ret(n(form.in_stocks_invested), n(form.in_stocks_value)),
         us_stocks_invested: n(form.us_stocks_invested), us_stocks_value: n(form.us_stocks_value), us_stocks_return_pct: ret(n(form.us_stocks_invested), n(form.us_stocks_value)),
         total_invested: totalInv, total_value: totalVal, total_return_pct: returnPct, profit,
-        created_at: new Date().toISOString(),
-      });
+      };
+      if (snapshot) {
+        await updateDoc(doc(db, "users", user.uid, "portfolio_snapshots", snapshot.id), { ...data, updated_at: new Date().toISOString() });
+      } else {
+        await addDoc(collection(db, "users", user.uid, "portfolio_snapshots"), { ...data, created_at: new Date().toISOString() });
+      }
       setOpen(false);
       resetForm();
       onAdded?.();
@@ -137,7 +157,13 @@ export default function SnapshotAddModal({ onAdded }: Props) {
 
   return (
     <>
-      <button onClick={() => setOpen(true)} className="btn-primary"><Plus className="w-4 h-4" />Add Snapshot</button>
+      {isEdit ? (
+        <button onClick={openModal} className="text-sky-400 hover:text-sky-300 transition-colors" title="Edit snapshot">
+          <Pencil className="w-4 h-4" />
+        </button>
+      ) : (
+        <button onClick={openModal} className="btn-primary"><Plus className="w-4 h-4" />Add Snapshot</button>
+      )}
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setOpen(false); resetForm(); }} />
@@ -147,10 +173,10 @@ export default function SnapshotAddModal({ onAdded }: Props) {
             </div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold text-white">Add Portfolio Snapshot</h2>
+                <h2 className="text-lg font-semibold text-white">{isEdit ? "Edit Portfolio Snapshot" : "Add Portfolio Snapshot"}</h2>
                 <p className="text-xs text-gray-500 mt-0.5">Sync invested amounts, then enter current market values</p>
               </div>
-              <button onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
+              <button onClick={() => { setOpen(false); resetForm(); }} className="text-gray-500 hover:text-gray-300"><X className="w-5 h-5" /></button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -237,10 +263,10 @@ export default function SnapshotAddModal({ onAdded }: Props) {
 
               {error && <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2 text-sm text-red-400">{error}</div>}
               <div className="flex gap-3 pt-1 pb-4">
-                <button type="button" onClick={() => setOpen(false)} className="btn-secondary flex-1 justify-center">Cancel</button>
+                <button type="button" onClick={() => { setOpen(false); resetForm(); }} className="btn-secondary flex-1 justify-center">Cancel</button>
                 <button type="submit" disabled={loading} className="btn-primary flex-1 justify-center">
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {loading ? "Saving…" : "Save Snapshot"}
+                  {loading ? "Saving…" : isEdit ? "Update Snapshot" : "Save Snapshot"}
                 </button>
               </div>
             </form>

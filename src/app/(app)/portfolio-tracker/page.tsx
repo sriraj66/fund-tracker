@@ -9,6 +9,7 @@ import { TrendingUp, Calendar, BarChart3, Download } from "lucide-react";
 import * as XLSX from "xlsx";
 import ImportButton from "@/components/ImportButton";
 import SnapshotAddModal from "./SnapshotAddModal";
+import DeleteButton from "@/components/DeleteButton";
 import PortfolioAnalytics from "./PortfolioAnalytics";
 import AllocationChart from "./AllocationChart";
 import PerformanceChart from "./PerformanceChart";
@@ -165,6 +166,7 @@ export default function PortfolioTrackerPage() {
                     <th className="text-right">Total Value</th>
                     <th className="text-right">Return %</th>
                     <th className="text-right">Profit / Loss</th>
+                    <th className="text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -178,6 +180,12 @@ export default function PortfolioTrackerPage() {
                       </td>
                       <td className={`text-right font-medium ${(s.profit ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                         {formatINR(s.profit ?? 0)}
+                      </td>
+                      <td>
+                        <div className="flex items-center justify-center gap-3">
+                          <SnapshotAddModal snapshot={s} onAdded={fetchData} />
+                          <DeleteButton id={s.id} endpoint="/api/delete/snapshots" itemName={`snapshot ${formatDate(s.snapshot_date)}`} onDeleted={fetchData} />
+                        </div>
                       </td>
                     </tr>
                   ))}
